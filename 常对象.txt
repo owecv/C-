@@ -1,0 +1,43 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+class Student
+{
+public:
+	Student(int=10,string="wangpeng",int=20,string="xian",int=0);
+	void Display()const;
+private:
+	const int num;
+	string name;
+	int age;
+	string addr;
+	mutable int count;
+};
+
+Student::Student(int num,string name,int age,string addr,int count):num(num)
+{
+	//this->num = num;
+	this->name = name;
+	this->age = age;
+	this->addr = addr;
+	this->count = count;
+}
+
+void Student::Display()const
+{
+	cout << num << endl;
+	cout << name << endl;
+	cout << age << endl;
+	cout << addr << endl;
+	cout << ++count << endl;
+}
+
+int main()
+{
+	const Student stu(30);
+	void(Student::*p)()const=&Student::Display;
+	//stu.Display();
+	(stu.*p)();
+	return 0;
+}
