@@ -1,0 +1,79 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+class String
+{
+public:
+	String(string);
+	~String();
+	void function();
+	void Display() { cout << MyString << endl; }
+private:
+	string MyString;
+	int count;//记录MyString中重复'$'的个数
+	int curr;//记录当前遍历到的位置
+	string temp;
+	int linshi;
+};
+
+String::String(string MyString)
+{
+	this->MyString = MyString;
+	this->count = 0;
+	this->curr = 0;
+	this->linshi = 0;
+}
+
+String::~String()
+{
+}
+
+void String::function()
+{
+	for (int i = 0;i<MyString.length();++i)
+	{
+		if (MyString.at(i) == '$')
+		{
+			curr = i;
+			int z = curr;
+			while (MyString.at(z++) == '$')
+			{
+				++linshi;
+			}
+			if (linshi >= 2)
+			{
+				count = count + linshi;
+				i = curr + linshi-1;
+				linshi = 0;
+			}
+			else
+			{
+				temp.push_back(MyString.at(i));
+				linshi = 0;
+			}
+		}
+		else
+		{
+			temp.push_back(MyString.at(i));
+		}
+	}
+	for (int j = 0;j < count;++j)
+	{
+		temp.push_back('$');
+	}
+	MyString.erase();
+	MyString = temp;
+}
+
+int main()
+{
+	String MyStr("$$$4$$5$$6");
+	MyStr.function();
+	MyStr.Display();
+
+	String MyStr1("$$$45$6");
+	MyStr1.function();
+	MyStr1.Display();
+	return 0;
+}
