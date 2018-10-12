@@ -1,0 +1,52 @@
+/*
+请实现一个函数，将一个字符串中的每个空格替换成“%20”。
+例如，当字符串为We Are Happy.则经过替换之后的字符串为We%20Are%20Happy。
+*/
+
+#include <iostream>
+#include <string>
+using namespace std;
+
+class String
+{
+public:
+	String(string);
+	void fucntion();
+	void Display() { cout << Str << endl; }
+private:
+	string Str;
+};
+
+String::String(string Str)
+{
+	this->Str = Str;
+}
+
+void String::fucntion()
+{
+	string temp;
+	for (int i = 0;i < Str.length();++i)
+	{
+		if (Str.at(i) == ' ')
+		{
+			temp.push_back('%');
+			temp.push_back('2');
+			temp.push_back('0');
+		}
+		else
+		{
+			temp.push_back(Str.at(i));
+		}
+	}
+	Str = temp;
+}
+
+int main()
+{
+	string temp;
+	getline(cin, temp);
+	String MyStr(temp);
+	MyStr.fucntion();
+	MyStr.Display();
+	return 0;
+}
