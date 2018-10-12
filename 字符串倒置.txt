@@ -1,0 +1,37 @@
+/*
+×Ö·û´®µ¹ÖÃ
+*/
+
+#include <iostream>
+#include <string>
+using namespace std;
+
+class String
+{
+public:
+	String(string Str) { this->Str = Str; }
+	void function();
+	void Display() { cout << Str << endl; }
+private:
+	string Str;
+};
+
+void String::function()
+{
+	string temp;
+	for (int i = Str.length() - 1;i >= 0;--i)
+	{
+		temp.push_back(Str.at(i));
+	}
+	Str = temp;
+}
+
+int main()
+{
+	string temp;
+	getline(cin, temp);
+	String MyStr(temp);
+	MyStr.function();
+	MyStr.Display();
+	return 0;
+}
