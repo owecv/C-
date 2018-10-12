@@ -1,0 +1,167 @@
+#include <iostream>
+#include <list>
+#include <string>
+#include <stdlib.h>
+#include <string.h>
+using namespace std;
+
+//键盘输入
+class Shuru
+{
+	Shuru(string, int);
+public:
+	void function();//计算从键盘输入有几个项
+	string shuru;
+	int count;//记录输入了几个项
+};
+
+Shuru::Shuru(string shuru,int count)
+{
+	this->shuru = shuru;
+	this->count = count;
+}
+
+void Shuru::function()
+{
+	for (int i = 0;i < shuru.length();++i)
+	{
+		if (shuru.at(i) == ' ')
+		{
+			++count;
+		}
+	}
+	++ count;
+}
+
+class phone_number
+{
+public:
+	phone_number(string="无", string = "无",string="无", string = "无", string = "无");
+	//void SetName(string);
+	void Display() { 
+		cout << "姓名\t" << "电话号码\t" << "工作单位\t"  << "家庭住址\t"  << "备注\t" << endl;
+		cout << name << "\t" << PhoneNumber << "\t" << job << "\t" << addr << "\t" << beizhu << "\t" << endl; }
+//private:
+	string name;//姓名
+	string PhoneNumber;//电话号码
+	string job;//工作单位
+	string addr;//家庭住址
+	string beizhu;//备注
+};
+
+phone_number::phone_number(string name,string PhoneNumber, string job, string addr, string beizhu)
+{
+	this->name = name;
+	this->PhoneNumber = PhoneNumber;
+	this->job = job;
+	this->addr = addr;
+	this->beizhu = beizhu;
+}
+
+class PhoneBook
+{
+public:
+	void UI();
+private:
+	int GUI();
+	void Display();//1：显示电话簿中的联系人
+	void InsertPhoneNumber(phone_number);//2：增加联系人
+	void Revise() {}//3：修改联系人信息
+	void Delete(string);//4：删除联系人
+	list<phone_number> Book;
+};
+
+int PhoneBook::GUI()
+{
+	cout << "***************欢迎使用电话簿小程序***************" << endl
+		<< "*              请选择要使用的功能：              *" << endl
+		<< "*              1：显示电话簿中的联系人           *" << endl
+		<< "*              2：增加联系人                     *" << endl
+		<< "*              3：修改联系人信息                 *" << endl
+		<< "*              4：删除联系人                     *" << endl
+		<< "*              5：退出程序                       *" << endl
+		<< "**************************************************" << endl
+		<< endl;
+	int n;
+	cin >> n;
+	return n;
+}
+
+void PhoneBook::UI()
+{
+	while (1)
+	{
+		int select = GUI();
+		if (select == 5)
+		{
+			exit(0);
+		}
+		if (select == 1)
+		{
+			Display();
+		}
+		if (select == 2)
+		{
+			phone_number temp;
+			cout << "请输入联系人信息（姓名，电话号码,工作，家庭地址，备注）：" << endl;
+			//Shuru MyShuRu("jkn",0);//记录从键盘上读取的信息
+			//getline(cin, MyShuRu.shuru);
+			cin >> temp.name >> temp.PhoneNumber>>temp.job>>temp.addr>>temp.beizhu;
+			InsertPhoneNumber(temp);
+		}
+		if (select == 3)
+		{
+			cout << "暂不支持此功能！请选择“删除”，后重新添加该联系人！" << endl;
+		}
+		if (select == 4)
+		{
+			cout << "请输入要删除联系人的姓名：";
+			string temp;
+			cin >> temp;
+			Delete(temp);//4：删除联系人
+		}
+	}
+}
+
+void PhoneBook::Display()//1：显示电话簿中的联系人
+{
+	if (Book.empty())
+	{
+		cout << "无任何联系人信息" << endl;
+	}
+	else
+	{
+		list<phone_number>::iterator it=Book.begin();
+		while (it!=Book.end())
+		{
+			it->Display();
+			++it;
+		}
+	}
+}
+
+void PhoneBook::InsertPhoneNumber(phone_number information)//2：增加联系人
+{
+	Book.push_front(information);
+}
+
+void PhoneBook::Delete(string name)//4：删除联系人
+{
+	list<phone_number>::iterator it = Book.begin();
+	while (it != Book.end())
+	{
+		if (!strcmp(name.c_str(), (*it).name.c_str()))
+		{
+			Book.erase(it);
+			break;
+		}
+		++it;
+	}
+}
+
+int main()
+{
+	PhoneBook MyBook;
+	MyBook.UI();
+	return  0;
+}
