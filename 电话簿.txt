@@ -3,6 +3,7 @@
 #include <string>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 using namespace std;
 
 //键盘输入
@@ -86,6 +87,17 @@ int PhoneBook::GUI()
 		<< endl;
 	int n;
 	cin >> n;
+	try {
+		if (cin.fail())
+			throw 1;
+	}
+	catch (int) {
+		cin.clear();
+		cin.ignore(100, '\n');
+		cout << "You can only enter numbers!" << endl;
+		cout << "Enter a number:" << endl;
+		cin >> n;
+	}
 	return n;
 }
 
@@ -94,6 +106,39 @@ void PhoneBook::UI()
 	while (1)
 	{
 		int select = GUI();
+		switch (select)
+		{
+			case 1:Display();break;//1：显示电话簿中的联系人
+			case 2: //2：增加联系人 
+			{
+				phone_number temp;
+				cout << "请输入联系人信息（姓名，电话号码,工作，家庭地址，备注）：" << endl;
+				//Shuru MyShuRu("jkn",0);//记录从键盘上读取的信息
+				//getline(cin, MyShuRu.shuru);
+				cin >> temp.name >> temp.PhoneNumber >> temp.job >> temp.addr >> temp.beizhu;
+				InsertPhoneNumber(temp);
+			}break;
+			//3：修改联系人信息
+			case 3:cout << "暂不支持此功能！请选择“删除”，后重新添加该联系人！" << endl;break;
+			//4：删除联系人
+			case 4: {
+				cout << "请输入要删除联系人的姓名：";
+				string temp;
+				cin >> temp;
+				Delete(temp);//4：删除联系人
+			}break;
+			//5：查找联系人
+			case 5: {
+				cout << "请输入要查找联系人的姓名：";
+				string temp;
+				cin >> temp;
+				find(temp);//5：查找联系人
+			}break;
+			//6：退出程序
+			case 6:exit(0);break;
+			default: cout << "请输入正确选项！";
+		}
+#if 0
 		if (select == 6)
 		{
 			exit(0);
@@ -129,7 +174,7 @@ void PhoneBook::UI()
 			cin >> temp;
 			find(temp);//5：查找联系人
 		}
-		else;
+#endif
 	}
 }
 
