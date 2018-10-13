@@ -68,6 +68,7 @@ private:
 	void InsertPhoneNumber(phone_number);//2：增加联系人
 	void Revise() {}//3：修改联系人信息
 	void Delete(string);//4：删除联系人
+	void find(string);//5：查找联系人
 	list<phone_number> Book;
 };
 
@@ -79,7 +80,8 @@ int PhoneBook::GUI()
 		<< "*              2：增加联系人                     *" << endl
 		<< "*              3：修改联系人信息                 *" << endl
 		<< "*              4：删除联系人                     *" << endl
-		<< "*              5：退出程序                       *" << endl
+		<< "*              5：查找联系人                     *" << endl
+		<< "*              6：退出程序                       *" << endl
 		<< "**************************************************" << endl
 		<< endl;
 	int n;
@@ -92,7 +94,7 @@ void PhoneBook::UI()
 	while (1)
 	{
 		int select = GUI();
-		if (select == 5)
+		if (select == 6)
 		{
 			exit(0);
 		}
@@ -120,6 +122,14 @@ void PhoneBook::UI()
 			cin >> temp;
 			Delete(temp);//4：删除联系人
 		}
+		if (select == 5)
+		{
+			cout << "请输入要查找联系人的姓名：";
+			string temp;
+			cin >> temp;
+			find(temp);//5：查找联系人
+		}
+		else;
 	}
 }
 
@@ -157,6 +167,21 @@ void PhoneBook::Delete(string name)//4：删除联系人
 		}
 		++it;
 	}
+}
+
+void PhoneBook::find(string name)//5：查找联系人
+{
+	list<phone_number>::iterator it = Book.begin();
+	while (it != Book.end())
+	{
+		if (!strcmp(name.c_str(), (*it).name.c_str()))
+		{
+			cout << it->name << "\t" << it->PhoneNumber << "\t" << it->job << "\t" << it->addr << "\t" << it->beizhu << endl;
+			return;
+		}
+		++it;
+	}
+	cout << "无此联系人！"<<endl;
 }
 
 int main()
