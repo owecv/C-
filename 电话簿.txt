@@ -3,15 +3,15 @@
 #include <string>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 using namespace std;
 
 //键盘输入
 class Shuru
 {
-	Shuru(string, int);
 public:
+	Shuru(string, int=0);
 	void function();//计算从键盘输入有几个项
+	void SetShuRu() { getline(cin, shuru); }
 	string shuru;
 	int count;//记录输入了几个项
 };
@@ -113,9 +113,31 @@ void PhoneBook::UI()
 			{
 				phone_number temp;
 				cout << "请输入联系人信息（姓名，电话号码,工作，家庭地址，备注）：" << endl;
-				//Shuru MyShuRu("jkn",0);//记录从键盘上读取的信息
-				//getline(cin, MyShuRu.shuru);
-				cin >> temp.name >> temp.PhoneNumber >> temp.job >> temp.addr >> temp.beizhu;
+				Shuru MyShuRu("",0);//记录从键盘上读取的信息
+				//cin >> MyShuRu.shuru;
+				MyShuRu.SetShuRu();
+				MyShuRu.function();
+				if (MyShuRu.count == 1)
+				{
+					cin >> temp.name;
+				}
+				if (MyShuRu.count == 2)
+				{
+					cin >> temp.name >> temp.PhoneNumber;
+				}
+				if (MyShuRu.count == 3)
+				{
+					cin >> temp.name >> temp.PhoneNumber >> temp.job;
+				}
+				if (MyShuRu.count == 4)
+				{
+					cin >> temp.name >> temp.PhoneNumber >> temp.job >> temp.addr;
+				}
+				if (MyShuRu.count == 5)
+				{
+					cin >> temp.name >> temp.PhoneNumber >> temp.job >> temp.addr >> temp.beizhu;
+				}
+				//cin >> temp.name >> temp.PhoneNumber >> temp.job >> temp.addr >> temp.beizhu;
 				InsertPhoneNumber(temp);
 			}break;
 			//3：修改联系人信息
