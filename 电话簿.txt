@@ -3,6 +3,7 @@
 #include <string>
 #include <stdlib.h>
 #include <string.h>
+#include <sstream>
 using namespace std;
 
 //键盘输入
@@ -10,10 +11,22 @@ class Shuru
 {
 public:
 	Shuru(string, int=0);
-	void function();//计算从键盘输入有几个项
-	void SetShuRu() { getline(cin, shuru); }
-	string shuru;
+	void function();//返回输入了几个单词
+	void SetShuRu() 
+	{ 
+		cin.clear();
+		cin.ignore(100, '\n');
+		stringstream ss;
+		getline(cin, shuru); 
+		ss.clear();
+	}
+	void Divide();//将键盘输入的内容转换为单个的单词
+
 	int count;//记录输入了几个项
+	list<string> Word;
+private:
+	string shuru;
+	int curr;//记录当前指针的位置
 };
 
 Shuru::Shuru(string shuru,int count)
@@ -34,14 +47,26 @@ void Shuru::function()
 	++ count;
 }
 
+void Shuru::Divide()//将键盘输入的内容转换为单个的单词
+{
+	string temp;
+	stringstream ss;
+	ss.clear();
+	ss.str(shuru);
+	for (int i = 0;i < count;++i)
+	{
+		ss >> temp;
+		Word.push_back(temp);
+	}
+}
+
 class phone_number
 {
 public:
 	phone_number(string="无", string = "无",string="无", string = "无", string = "无");
-	//void SetName(string);
 	void Display() { 
-		cout << "姓名\t" << "电话号码\t" << "工作单位\t"  << "家庭住址\t"  << "备注\t" << endl;
-		cout << name << "\t" << PhoneNumber << "\t" << job << "\t" << addr << "\t" << beizhu << "\t" << endl; }
+		cout << "姓名：" << name << "\t" << "电话号码：" << PhoneNumber << "\t" << "工作单位：" << job << "\t" << "家庭住址：" << addr << "\t" << "备注：" << beizhu << endl;
+		}
 //private:
 	string name;//姓名
 	string PhoneNumber;//电话号码
@@ -117,25 +142,41 @@ void PhoneBook::UI()
 				//cin >> MyShuRu.shuru;
 				MyShuRu.SetShuRu();
 				MyShuRu.function();
+				MyShuRu.Divide();
 				if (MyShuRu.count == 1)
 				{
-					cin >> temp.name;
+					list<string>::iterator it = MyShuRu.Word.begin();
+					temp.name=*it;
 				}
 				if (MyShuRu.count == 2)
 				{
-					cin >> temp.name >> temp.PhoneNumber;
+					list<string>::iterator it = MyShuRu.Word.begin();
+					temp.name = *it;
+					temp.PhoneNumber = *++it;
 				}
 				if (MyShuRu.count == 3)
 				{
-					cin >> temp.name >> temp.PhoneNumber >> temp.job;
+					list<string>::iterator it = MyShuRu.Word.begin();
+					temp.name = *it;
+					temp.PhoneNumber = *++it;
+					temp.job = *++it;
 				}
 				if (MyShuRu.count == 4)
 				{
-					cin >> temp.name >> temp.PhoneNumber >> temp.job >> temp.addr;
+					list<string>::iterator it = MyShuRu.Word.begin();
+					temp.name = *it;
+					temp.PhoneNumber = *++it;
+					temp.job = *++it;
+					temp.addr = *++it;
 				}
 				if (MyShuRu.count == 5)
 				{
-					cin >> temp.name >> temp.PhoneNumber >> temp.job >> temp.addr >> temp.beizhu;
+					list<string>::iterator it = MyShuRu.Word.begin();
+					temp.name = *it;
+					temp.PhoneNumber = *++it;
+					temp.job = *++it;
+					temp.addr = *++it;
+					temp.beizhu = *++it;
 				}
 				//cin >> temp.name >> temp.PhoneNumber >> temp.job >> temp.addr >> temp.beizhu;
 				InsertPhoneNumber(temp);
