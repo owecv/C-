@@ -1,0 +1,178 @@
+#include <iostream>
+#include <stdlib.h>
+using namespace std;
+
+typedef int DataType;
+const int MaxSize = 100;
+
+typedef struct Node			//二叉链表存储结构类型定义
+{
+	DataType data;			//数据域
+	struct Node *lchild;	//指向左孩子节点
+	struct Node *rchild;	//指向右孩子节点
+}*BiTree,BiNode;
+
+void InitBiTree(BiTree *T)	//二叉树的初始化操作
+{
+	*T = NULL;
+}
+
+void DestroyBiTree(BiTree *T)//销毁二叉树操作
+{
+	if (*T)					//如果是非空二叉树
+	{
+		if ((*T)->lchild)
+		{
+			DestroyBiTree(&((*T)->lchild));//递归
+		}
+		if ((*T)->rchild)
+		{
+			DestroyBiTree(&((*T)->rchild));//递归
+		}
+		free(*T);
+		*T = NULL;
+	}
+}
+
+void CreateBiTree(BiTree *T)	//递归创建二叉树
+{
+	DataType ch;
+	cin >> ch;
+	if (ch == '#')
+	{
+		*T = NULL;
+	}
+	else
+	{
+		*T = (BiTree)malloc(sizeof(BiNode));	//生成根节点
+		if (!(*T))
+		{
+			exit(-1);
+		}
+		(*T)->data = ch;
+		CreateBiTree(&((*T)->lchild));			//构造左子树
+		CreateBiTree(&((*T)->rchild));			//构造右子树
+	}
+}
+
+int InsertLeftChild(BiTree p, BiTree c)			//二叉树的左插入操作
+{
+	if (p)										//如果指针不空
+	{
+		c->rchild = p->lchild;					//p的原来的左子树成为c的右子树
+		p->lchild = c;							//子树c作为p的左子树
+		return 1;
+	}
+	return 0;
+}
+
+int InsertRightChild(BiTree p, BiTree c)			//二叉树的右插入操作
+{
+	if (p)										//如果指针不空
+	{
+		c->rchild = p->rchild;					//p的原来的右子树成为c的右子树
+		p->rchild = c;							//子树c作为p的右子树
+		return 1;
+	}
+	return 0;
+}
+
+BiTree Point(BiTree T, DataType e)
+{
+	BiTree Q[MaxSize];
+	int front = 0;
+	int rear = 0;
+	BiNode *p;
+	if (T)
+	{
+		Q[rear] = T;
+		rear++;
+
+		while (front != rear)
+		{
+			p = Q[front];
+			front++;
+			if (p->data == e)
+			{
+				return p;
+			}
+			if (p->lchild)
+			{
+				Q[rear] = p->lchild;
+				rear++;
+			}
+			if (p->rchild)
+			{
+				Q[rear] = p->rchild;	//右孩子节点的指针入队
+				rear++;
+			}
+		}
+	}
+}
+
+DataType LeftChild(BiTree T, DataType e)	//返回二叉树的节点的左孩子元素值
+{
+	BiTree p;
+	if (T)
+	{
+		p = Point(T,e);
+		if (p&&p->lchild)
+		{
+			return p->lchild->data;
+		}
+	}
+	return 0;
+}
+
+DataType RightChild(BiTree T, DataType e)	//返回二叉树的右孩子节点元素值
+{
+	BiTree p;
+	if (T)
+	{
+		p = Point(T, e);
+		if (p&&p->rchild)
+		{
+			return p->rchild->data;
+		}
+	}
+	return 0;
+}
+
+int DeleteLeftChild(BiTree p)	//二叉树的左子树删除操作
+{
+	if (p)
+	{
+		DestroyBiTree(&(p->lchild));	//删除左子树
+		return 1;
+	}
+	return 0;
+}
+
+int DeleteRightChild(BiTree p)	//二叉树的右子树删除操作
+{
+	if (p)
+	{
+		DestroyBiTree(&(p->rchild));	//删除右子树
+		return 1;
+	}
+	return 0;
+}
+
+void PreOrderTraverse(BiTree T)	//二叉树先序遍历，递归实现
+{
+	if (T)
+	{
+		printf("%2c",T->data);
+		PreOrderTraverse(T->lchild);
+		PreOrderTraverse(T->rchild);
+	}
+}
+
+int main()
+{
+	BiTree MyTree;
+	InitBiTree(&MyTree);
+	CreateBiTree(&MyTree);
+	PreOrderTraverse(MyTree);
+	return 0;
+}
