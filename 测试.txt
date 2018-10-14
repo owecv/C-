@@ -1,0 +1,16 @@
+#include <iostream>
+#include <string>
+#include <list>
+using namespace std;
+
+int main()
+{
+	list<string> MyList;
+	MyList.push_back("hello");
+	MyList.push_back("world");
+	MyList.push_back("wangpengcv");
+	//list<phone_number>::iterator it = Book.begin();
+	list<string>::iterator it = MyList.begin();
+	cout << *it<< endl;
+	cout << *++it << endl;
+}
