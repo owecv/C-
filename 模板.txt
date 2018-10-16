@@ -1,0 +1,25 @@
+#include <iostream>
+using namespace std;
+
+template <typename T>
+class Compare
+{
+public:
+	Compare(T c, T d) :a(c), b(d) {}
+	Compare() {}
+	T Max() { return a > b?a : b; }
+	T Min();
+private:
+	T a;
+	T b;
+};
+template <typename T>
+T Compare<T>::Min() { return a > b ? b : a; }
+
+int main()
+{
+	Compare<int> My(10,20);My;
+	cout<<My.Max()<<endl;
+	cout << My.Min() << endl;
+	return 0;
+}
