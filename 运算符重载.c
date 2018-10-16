@@ -8,6 +8,13 @@ public:
 	Complex(double r, double i) { real = r, imag = i; }
 	Complex complex_add(Complex &c2);
 	void display();
+	Complex operator+(Complex &c2)
+	{
+		Complex c;
+		c.real = real + c2.real;
+		c.imag = imag + c2.imag;
+		return c;
+	}
 private:
 	double real;
 	double imag;
@@ -29,9 +36,13 @@ void Complex::display()
 int main()
 {
 	Complex c1(3, 4), c2(5, -10), c3;
-	c3 = c1.complex_add(c2);
+	/*c3 = c1.complex_add(c2);
 	cout << "c1=";c1.display();
 	cout << "c2=";c2.display();
-	cout << "c1+c2=";c3.display();
+	cout << "c1+c2=";c3.display();*/
+	c1.display();
+	c2.display();
+	c3 = c1 + c2;
+	c3.display();
 	return 0;
 }
