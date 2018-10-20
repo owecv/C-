@@ -1,0 +1,48 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+class Student
+{
+public:
+	Student(int n, string nam, char s)
+	{
+		num = n;
+		name = nam;
+		sex = s;
+	}
+	~Student() {}//基类析构函数
+protected:
+	int num;
+	string name;
+	char sex;
+};
+
+class Student1 :public Student//声明公用派生类Student1
+{
+public:
+	Student1(int n, string nam, char s, int a, string ad) :Student(n, nam, s)//定义派生类构造函数
+	{
+		age = a;
+		addr = ad;
+	}
+	void show()
+	{
+		cout << "num:" << num << endl;
+		cout << "name:" << name << endl;
+		cout << "sex:" << sex << endl;
+		cout << "age:" << age << endl;
+		cout << "address:" << addr << endl << endl;
+	}
+	~Student1() {}
+private:
+	int age;
+	string addr;
+};
+
+int main()
+{
+	Student1 stud1(10010,"wangpengcv",'m',19,"shanxixian");
+	stud1.show();
+	return 0;
+}
