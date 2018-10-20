@@ -1,0 +1,40 @@
+#include <iostream>
+using namespace std;
+
+class Stuent
+{
+public:
+	void SetNum()
+	{
+		cin >> c >> b >> a;
+	}
+	int c;
+private:
+	int a;
+protected:
+	int b;
+};
+
+class Student1 :public Stuent
+{
+public:
+	void display()
+	{
+		cout << d << c << b << endl;
+	}
+	void Display()
+	{
+		SetNum();
+		cin >> d;
+	}
+private:
+	int d;
+};
+
+int main()
+{
+	Student1 stu;
+	stu.Display();
+	stu.display();
+	return 0;
+}
