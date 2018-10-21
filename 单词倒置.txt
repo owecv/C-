@@ -1,0 +1,79 @@
+#include <iostream>
+#include <string>
+#include <stack>
+using namespace std;
+
+class InPut
+{
+public:
+	InPut()
+	{
+		cout << "请输入：";
+		getline(cin, shuru);
+		count = 1;
+	}
+	void function();
+	void display()
+	{
+		cout << output << endl;
+	}
+private:
+	string shuru;//记录输入的字符串
+	int count;//记录输入的字符串有几个单词
+	stack<string> MyStack;//将该字符串中的单词分割出来存在该栈中
+	string output;//将单词顺序调换后的输出
+};
+
+void InPut::function()
+{
+	string::iterator it = shuru.begin();
+	while (it != shuru.end())
+	{
+		if (*it == ' ')
+		{
+			count++;
+		}
+		++it;
+	}
+	string word;
+	for (int i = 0;i < shuru.size();++i)
+	{
+		if (shuru.at(i)!=' ')
+		{
+			word.push_back(shuru.at(i));
+		}
+		if (shuru.at(i) == ' ')
+		{
+			MyStack.push(word);
+			word.clear();
+		}
+		if (i == shuru.size() - 1)
+		{
+			MyStack.push(word);
+			word.clear();
+		}
+	}
+	int n = MyStack.size();
+	for (int i = 0;i < n;++i)
+	{
+		if (i==n-1)
+		{
+			output = output + MyStack.top();
+			MyStack.pop();
+		}
+		else
+		{
+			output = output + MyStack.top();
+			MyStack.pop();
+			output.push_back(' ');
+		}
+	}
+}
+
+int main()
+{
+	InPut test;
+	test.function();
+	test.display();
+	return 0;
+}
