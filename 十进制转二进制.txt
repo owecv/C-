@@ -1,0 +1,108 @@
+#include <iostream>
+#include <string>
+#include <stack>
+#include <queue>
+using namespace std;
+const int jingdu = 8;//小数部分的精度
+class InPut
+{
+public:
+	InPut() :input(0) {};
+	friend void Display(InPut &);
+	friend void GetInput(InPut &);
+	void function();
+	void setInPut(int a)
+	{
+		input = a;
+	}
+private:
+	int input;
+	string MyString;
+	stack<int> MyStack;
+};
+
+void Display(InPut &t)
+{
+	int size = t.MyStack.size();
+	for (int i = 0;i <size;++i)
+	{
+		cout << t.MyStack.top();
+		t.MyStack.pop();
+	}
+	//cout << endl;
+}
+
+void GetInput(InPut &t)
+{
+	cin >> t.input;
+}
+
+void InPut::function()
+{
+	int temp = input;
+	while (temp != 0)
+	{
+		MyStack.push(temp%2);
+		temp = temp / 2;
+	}
+}
+
+class InPutFloat
+{
+public:
+	void function();
+	void GetInput()
+	{
+		cin >> input;
+	}
+private:
+	float input;
+	queue<int> MyQueue;
+};
+
+void InPutFloat::function()
+{
+	InPut My;
+	int v = (int)input;
+	if (v == 0)
+	{
+		cout << "0";
+	}
+	if (v != 0)
+	{
+		My.setInPut((int)input);
+	}
+	My.function();
+	Display(My);
+	cout << ".";
+	float temp = input-(int)input;
+	int zhengshu;//存乘二后的整数部分
+	for (int i = 0;i < jingdu;++i)
+	{
+		zhengshu = temp * 2;
+		temp *= 2;
+		MyQueue.push(zhengshu);
+		if (zhengshu == 1)
+		{
+			temp = temp - (int)temp;
+			if (temp == 0)
+			{
+				break;
+			}
+		}
+	}
+	while(!MyQueue.empty())
+	{
+		cout << MyQueue.front();
+		MyQueue.pop();
+	}
+	cout << endl;
+}
+
+int main()
+{
+	InPutFloat My;
+	My.GetInput();
+	My.function();
+	return 0;
+}
