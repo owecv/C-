@@ -1,0 +1,105 @@
+#include <iostream>
+#include <list>
+#include <queue>
+using namespace std;
+
+class Hang//队列中表示每一行的链表
+{
+public:
+	list<int> MyList;
+	int count;//记录该行本应该有多少个元素
+	int curr_count;//记录该行当前有多少个元素
+	int add_yuansu;//计算该行还应该增加一个元素
+	Hang()
+	{
+		count = 0;
+		curr_count = 0;
+		add_yuansu = 0;
+	}
+};
+
+class MyQueue//存放整个杨辉三角每一行的数据
+{
+public:
+	queue<Hang> mMyQueue;
+	queue<Hang> temp;
+	int jiecheng;
+};
+
+void function()
+{
+	int n;//几阶的杨辉三角
+	cin >> n;
+	int jiecheng=0;//计算存储整个杨辉三角每一行的队列，共有多少个元素
+	for (int i = 1;i < n + 1;++i)
+	{
+		jiecheng += i;
+	}
+	MyQueue yanghui;
+	yanghui.jiecheng = jiecheng;
+	Hang hang;
+	hang.MyList.push_back(1);
+	hang.count = 1;
+	hang.curr_count = 1;
+	yanghui.mMyQueue.push(hang);
+	hang.MyList.push_back(1);
+	hang.count = 2;
+	hang.curr_count = 2;
+	for (int i = 1;i < n;++i)
+	{
+		hang.count = i + 1;//本行应该有的元素个数
+		hang.add_yuansu = hang.count - hang.curr_count;
+		yanghui.mMyQueue.push(hang);
+	}
+	int kongz = yanghui.mMyQueue.size();
+	//for (int i = 0;i < kongz;++i)
+	while (yanghui.mMyQueue.size()!=0)
+	{
+		Hang tr = yanghui.mMyQueue.front();
+		if (tr.add_yuansu == 0)
+		{
+			yanghui.temp.push(yanghui.mMyQueue.front());
+			yanghui.mMyQueue.pop();
+		}
+		if (tr.add_yuansu > 0)
+		{
+			Hang tz = yanghui.temp.back();//temp中存的上一行数据
+			Hang tmp = tr;
+			list<int>::iterator it0 = tmp.MyList.begin();
+			list<int>::iterator it1 = tz.MyList.begin();
+			int konga = tr.add_yuansu;
+			for (int j = 0;j < konga;++j)
+			{
+				it0 = tmp.MyList.begin();
+				for (int zs = 0;zs < j+1;++zs)
+				{
+					++it0;
+				}
+				tmp.MyList.insert(it0,*it1+(*(++it1)));
+				tmp.curr_count += 1;
+			}
+			tmp.add_yuansu = tmp.count - tmp.count;
+			yanghui.temp.push(tmp);
+			yanghui.mMyQueue.pop();
+		}
+	}
+	int hl = yanghui.temp.size();
+	for (int i = 0;i < hl;++i)
+	{
+		Hang vs = yanghui.temp.front();
+		list<int>::iterator it2 = vs.MyList.begin();
+		while (it2 != vs.MyList.end())
+		{
+			cout << *it2 << " ";
+			++it2;
+		}
+		cout << endl;
+		yanghui.temp.pop();
+	}
+}
+
+int main()
+{
+	function();
+	return 0;
+}
