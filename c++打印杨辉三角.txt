@@ -88,6 +88,10 @@ void function()
 	{
 		Hang vs = yanghui.temp.front();
 		list<int>::iterator it2 = vs.MyList.begin();
+		for (int j = 0;j < n - (vs.MyList.size());++j)
+		{
+			cout << " ";
+		}
 		while (it2 != vs.MyList.end())
 		{
 			cout << *it2 << " ";
