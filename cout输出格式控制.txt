@@ -1,0 +1,35 @@
+#include <iostream>
+using namespace std;
+
+int main()
+{
+	int a = 21;
+	cout.setf(ios::showbase);//显示基数符号（0X或0）
+	cout << "dec:" << a << endl;//默认以十进制形式输出a
+	cout.unsetf(ios::dec);//终止十进制的格式设置
+	cout.setf(ios::hex);//设置以十六进制输出的状态
+	cout << "hex:" << a << endl;//以十六进制形式输出a
+	cout.unsetf(ios::hex);//终止十六进制的格式设置
+	cout.setf(ios::oct);//设置以八进制输出的状态
+	cout << "oct:" << a << endl;//以八进制形式输出a
+	char *pt = "China";
+	cout.width(10);
+	cout << pt << endl;
+	cout.width(10);
+	cout.fill('*');
+	cout << pt << endl;
+	double pi = 22.0 / 7.0;
+	cout.setf(ios::scientific);
+	cout << "pi=";
+	cout.width(14);
+	//成员函数width(n)和控制符setw(n)只对其后的第一个输出项有效
+	cout << pi << endl;
+	cout.unsetf(ios::scientific);//终止科学计数法状态
+	cout.setf(ios::fixed);
+	cout.width(12);
+	cout.setf(ios::showpos);
+	cout.setf(ios::internal);
+	cout.precision(6);
+	cout << pi << endl;
+	return 0;
+}
