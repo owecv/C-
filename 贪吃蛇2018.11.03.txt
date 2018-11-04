@@ -1,6 +1,8 @@
 #include <iostream>
 #include <time.h>
 #include <list>
+#include <conio.h>
+#include <windows.h>
 using namespace std;
 
 const int MAPSIZE = 30;
@@ -21,7 +23,7 @@ class Map
 {
 public:
 	void InitMap();
-	void ShowMap();
+	void ShowMap(int);
 	void SetFood();//在棋盘上随机放置食物
 	void DrawSnack(list<Position> p);//将蛇画到地图上
 	int IsFood(int x, int y);//判断(x,y)位置是否为食物
@@ -48,14 +50,15 @@ void Map::InitMap()
 	}
 }
 
-void Map::ShowMap()
+void Map::ShowMap(int length)
 {
 	system("cls");
+	cout << "#************@@欢迎使用贪吃蛇小游戏@@************#" << endl << endl;
+	cout << "当前蛇体长度为：" << length << endl << endl;
 	for (int i = 0;i < MAPSIZE ;++i)
 	{
 		for (int j = 0;j < MAPSIZE ;++j)
 		{
-			//cout << map[i][j]<<" ";
 			if (map[i][j] == 1)
 			{
 				cout << "  ";
@@ -80,15 +83,23 @@ void Map::ShowMap()
 void Map::SetFood()//在棋盘上随机放置食物
 {
 	srand(time(0));//以系统时间为种子种随机数
-	int food0 = rand() % MAPSIZE;
+	int food0 = rand() % MAPSIZE-1;
 	if (food0 == 0)
 	{
-		food0 = rand() % MAPSIZE;
+		food0 = rand() % MAPSIZE-1;
 	}
-	int food1 = rand() % MAPSIZE;
+	if (food0 == MAPSIZE-1)
+	{
+		food0 = rand() % MAPSIZE - 1;
+	}
+	int food1 = rand() % MAPSIZE-1;
 	if (food1 == 0)
 	{
-		food1 = rand() % MAPSIZE;
+		food1 = rand() % MAPSIZE-1;
+	}
+	if (food1 == MAPSIZE - 1)
+	{
+		food1 = rand() % MAPSIZE - 1;
 	}
 	map[food0][food1] = 4;
 }
@@ -159,6 +170,7 @@ public:
 	void RightMove();//蛇向右走
 	void UpMove();//蛇向上走
 	void DownMove();//蛇向下走
+	int SnackLength() { return snack.size(); }//返回蛇体长度
 private:
 	list<Position> snack;
 };
@@ -189,6 +201,10 @@ void Snack::LeftMove()//蛇向左走
 	if (a == 0)
 	{
 		snack.pop_front();
+	}
+	else if (a == 1)
+	{
+		SetFood();
 	}
 	//将蛇画到地图上
 	it = snack.begin();
@@ -228,7 +244,7 @@ void Snack::RightMove()//蛇向右走
 	{
 		snack.pop_front();
 	}
-	if (a == 1)
+	else if (a == 1)
 	{
 		SetFood();
 	}
@@ -250,6 +266,10 @@ void Snack::UpMove()//蛇向上走
 	{
 		temp.x = 0;
 	}
+	if (it->x == 0)
+	{
+		temp.x = MAPSIZE - 2;
+	}
 	else
 	{
 		temp.x = it->x-1;
@@ -267,6 +287,10 @@ void Snack::UpMove()//蛇向上走
 	if (a == 0)
 	{
 		snack.pop_front();
+	}
+	else if (a == 1)
+	{
+		SetFood();
 	}
 	//将蛇画到地图上
 	it = snack.begin();
@@ -304,6 +328,10 @@ void Snack::DownMove()//蛇向下走
 	{
 		snack.pop_front();
 	}
+	else if (a == 1)
+	{
+		SetFood();
+	}
 	//将蛇画到地图上
 	it = snack.begin();
 	while (it != snack.end())
@@ -321,40 +349,36 @@ void Game()
 	MySnack.SetFood();
 	while (1)
 	{
-		MySnack.ShowMap();
-		int a;
-		cin >> a;
-		if (a == 8)
+		int SnackLength = MySnack.SnackLength();
+		MySnack.ShowMap(SnackLength);
+		char a='p';
+		a =_getch();
+		if (a == 'p')
+		{
+			MySnack.RightMove();
+			Sleep(500);
+		}
+		if (a == 'w')
 		{
 			MySnack.UpMove();
 		}
-		if (a == 5)
+		if (a == 's')
 		{
 			MySnack.DownMove();
 		}
-		if (a == 4)
+		if (a == 'a')
 		{
 			MySnack.LeftMove();
 		}
-		if (a == 6)
+		if (a == 'd')
 		{
 			MySnack.RightMove();
 		}
-		MySnack.RightMove();
 	}
-	/*MySnack.InitMap();
-	MySnack.SetFood();
-	MySnack.RightMove();
-	MySnack.RightMove();
-	MySnack.ShowMap();*/
 }
 
 int main()
 {
-	/*Map MyMap;
-	MyMap.InitMap();
-	MyMap.SetFood();
-	MyMap.ShowMap();*/
 	Game();
 	return 0;
 }
