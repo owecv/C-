@@ -302,3 +302,91 @@ void Snack::DownMove()//蛇向下走
 		++it;
 	}
 }
+
+/*
+#include <conio.h>
+#include <iostream>
+
+using namespace std;
+
+int main()
+{
+int ch;
+while (1){
+if (_kbhit()){//如果有按键按下，则_kbhit()函数返回真
+ch = _getch();//使用_getch()函数获取按下的键值
+cout << ch;
+if (ch == 27){ break; }//当按下ESC时循环，ESC键的键值时27.
+}
+}
+system("pause");
+}
+---------------------
+作者：lindorx
+来源：CSDN
+原文：https://blog.csdn.net/lindorx/article/details/78760610
+版权声明：本文为博主原创文章，转载请附上博文链接！
+*/
+
+void Game()
+{
+	Map MyMap;
+	Snack MySnack;
+	MySnack.InitMap();
+	MySnack.SetFood();
+	char ch='d';//记录按下哪个按键，默认向右走
+	while (1)
+	{
+		int SnackLength = MySnack.SnackLength();
+		MySnack.ShowMap(SnackLength);
+		if (_kbhit())//如果有按键按下，则_kbhit()函数返回真
+		{
+			ch = _getch();//使用_getch()函数获取按下的键值
+			if (ch == 'w')
+			{
+				MySnack.UpMove();
+			}
+			if (ch == 's')
+			{
+				MySnack.DownMove();
+			}
+			if (ch == 'a')
+			{
+				MySnack.LeftMove();
+			}
+			if (ch == 'd')
+			{
+				MySnack.RightMove();
+			}
+		}
+		else
+		{
+			if (ch == 'w')
+			{
+				MySnack.UpMove();
+				Sleep(500);
+			}
+			if (ch == 's')
+			{
+				MySnack.DownMove();
+				Sleep(500);
+			}
+			if (ch == 'a')
+			{
+				MySnack.LeftMove();
+				Sleep(500);
+			}
+			if (ch == 'd')
+			{
+				MySnack.RightMove();
+				Sleep(500);
+			}
+		}
+	}
+}
+
+int main()
+{
+	Game();
+	return 0;
+}
