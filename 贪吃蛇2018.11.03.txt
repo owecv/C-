@@ -53,7 +53,7 @@ void Map::InitMap()
 void Map::ShowMap(int length)
 {
 	system("cls");
-	cout << "#************@@欢迎使用贪吃蛇小游戏@@************#" << endl << endl;
+	cout << "#***************@@欢迎使用贪吃蛇小游戏@@***************#" << endl << endl;
 	cout << "当前蛇体长度为：" << length << endl << endl;
 	for (int i = 0;i < MAPSIZE ;++i)
 	{
@@ -83,23 +83,23 @@ void Map::ShowMap(int length)
 void Map::SetFood()//在棋盘上随机放置食物
 {
 	srand(time(0));//以系统时间为种子种随机数
-	int food0 = rand() % MAPSIZE-1;
+	int food0 = rand() % MAPSIZE;//判断食物是否放在了边界上
 	if (food0 == 0)
 	{
-		food0 = rand() % MAPSIZE-1;
+		food0 = rand() % MAPSIZE;
 	}
 	if (food0 == MAPSIZE-1)
 	{
-		food0 = rand() % MAPSIZE - 1;
+		food0 = rand() % MAPSIZE ;
 	}
-	int food1 = rand() % MAPSIZE-1;
+	int food1 = rand() % MAPSIZE;
 	if (food1 == 0)
 	{
-		food1 = rand() % MAPSIZE-1;
+		food1 = rand() % MAPSIZE;
 	}
 	if (food1 == MAPSIZE - 1)
 	{
-		food1 = rand() % MAPSIZE - 1;
+		food1 = rand() % MAPSIZE ;
 	}
 	map[food0][food1] = 4;
 }
@@ -180,21 +180,13 @@ void Snack::LeftMove()//蛇向左走
 	list<Position>::iterator it = snack.end();
 	--it;
 	Position temp;
-	if (it->x == MAPSIZE - 1)
+	temp.x = it->x;
+	temp.y = it->y - 1;
+	if (temp.y == 0)
 	{
-		temp.x = 0;
-	}
-	else
-	{
-		temp.x = it->x;
-	}
-	if (it->y == MAPSIZE - 1)
-	{
-		temp.y = 0;
-	}
-	else
-	{
-		temp.y = it->y - 1;
+		system("cls");
+		cout << "Game Over!" << endl;
+		exit(0);
 	}
 	snack.push_back(temp);
 	int a = IsFood(temp.x, temp.y);
@@ -220,23 +212,13 @@ void Snack::RightMove()//蛇向右走
 	list<Position>::iterator it = snack.end();
 	--it;
 	Position temp;
-
-	if (it->x == MAPSIZE - 1)
+	temp.x = it->x;
+	temp.y = it->y + 1;
+	if (temp.y == MAPSIZE-1)
 	{
-		temp.x = 0;
-	}
-	else
-	{
-		temp.x = it->x;
-	}
-	if (it->y == MAPSIZE - 1)
-	{
-		temp.y = 0;
-		temp.x += 1;
-	}
-	else
-	{
-		temp.y = it->y + 1;
+		system("cls");
+		cout << "Game Over!" << endl;
+		exit(0);
 	}
 	snack.push_back(temp);
 	int a = IsFood(temp.x, temp.y);//判断是否遇到食物
@@ -262,25 +244,13 @@ void Snack::UpMove()//蛇向上走
 	list<Position>::iterator it = snack.end();
 	--it;
 	Position temp;
-	if (it->x == MAPSIZE - 1)
+	temp.x = it->x-1;
+	temp.y = it->y;
+	if (temp.x == 0)
 	{
-		temp.x = 0;
-	}
-	if (it->x == 0)
-	{
-		temp.x = MAPSIZE - 2;
-	}
-	else
-	{
-		temp.x = it->x-1;
-	}
-	if (it->y == MAPSIZE - 1)
-	{
-		temp.y = 0;
-	}
-	else
-	{
-		temp.y = it->y ;
+		system("cls");
+		cout << "Game Over!" << endl;
+		exit(0);
 	}
 	snack.push_back(temp);
 	int a = IsFood(temp.x, temp.y);
@@ -306,21 +276,13 @@ void Snack::DownMove()//蛇向下走
 	list<Position>::iterator it = snack.end();
 	--it;
 	Position temp;
-	if (it->x == MAPSIZE - 1)
+	temp.x = it->x + 1;
+	temp.y = it->y;
+	if (temp.x == MAPSIZE-1)
 	{
-		temp.x = 0;
-	}
-	else
-	{
-		temp.x = it->x + 1;
-	}
-	if (it->y == MAPSIZE - 1)
-	{
-		temp.y = 0;
-	}
-	else
-	{
-		temp.y = it->y;
+		system("cls");
+		cout << "Game Over!" << endl;
+		exit(0);
 	}
 	snack.push_back(temp);
 	int a = IsFood(temp.x, temp.y);
@@ -339,46 +301,4 @@ void Snack::DownMove()//蛇向下走
 		DrawSnack(snack);
 		++it;
 	}
-}
-
-void Game()
-{
-	Map MyMap;
-	Snack MySnack;
-	MySnack.InitMap();
-	MySnack.SetFood();
-	while (1)
-	{
-		int SnackLength = MySnack.SnackLength();
-		MySnack.ShowMap(SnackLength);
-		char a='p';
-		a =_getch();
-		if (a == 'p')
-		{
-			MySnack.RightMove();
-			Sleep(500);
-		}
-		if (a == 'w')
-		{
-			MySnack.UpMove();
-		}
-		if (a == 's')
-		{
-			MySnack.DownMove();
-		}
-		if (a == 'a')
-		{
-			MySnack.LeftMove();
-		}
-		if (a == 'd')
-		{
-			MySnack.RightMove();
-		}
-	}
-}
-
-int main()
-{
-	Game();
-	return 0;
 }
