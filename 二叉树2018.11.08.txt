@@ -1,0 +1,132 @@
+#include <conio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+using namespace std;
+
+#define OK 1
+#define ERROR 0
+#define TRUE 1
+#define FALSE 0
+//#define OVERFLOW -2
+
+typedef int status;
+
+typedef struct BiNode
+{
+	char Data;
+	struct BiNode* lChild;
+	struct BiNode* rChild;
+}BiNode, *pBiNode;
+
+status CreateTree(BiNode** pTree) /*Input Example: abd##e##cf##g##*/
+{
+	char ch;
+	cin >> ch;
+	if (ch == '#')
+	{
+		(*pTree) = NULL;
+	}
+	else
+	{
+		if (!((*pTree) = (BiNode*)malloc(sizeof(BiNode))))
+		{
+			exit(OVERFLOW);
+		}
+
+		(*pTree)->Data = ch;
+		CreateTree(&((*pTree)->lChild));
+		CreateTree(&((*pTree)->rChild));
+	}
+	return OK;
+}
+
+status Visit(char Data)
+{
+	printf("%c", Data);
+	return OK;
+}
+
+status PreOrderTraval(BiNode* pTree)
+{
+	if (pTree)
+	{
+		if (Visit(pTree->Data))
+		{
+			if (PreOrderTraval(pTree->lChild))
+			{
+				if (PreOrderTraval(pTree->rChild))
+				{
+					return OK;
+				}
+			}
+		}
+		return ERROR;
+	}
+	else
+	{
+		return OK;
+	}
+}
+status InOrderTraval(BiNode* pTree)
+{
+	if (pTree)
+	{
+		if (InOrderTraval(pTree->lChild))
+		{
+			if (Visit(pTree->Data))
+			{
+				if (InOrderTraval(pTree->rChild))
+				{
+					return OK;
+				}
+			}
+			return ERROR;
+		}
+		return ERROR;
+
+	}
+	else
+	{
+		return OK;
+	}
+}
+status PostOrderTraval(BiNode* pTree)
+{
+	if (pTree)
+	{
+		if (PostOrderTraval(pTree->lChild))
+		{
+			if (PostOrderTraval(pTree->rChild))
+			{
+				if (Visit(pTree->Data))
+				{
+					return OK;
+				}
+				return ERROR;
+			}
+		}
+		return ERROR;
+	}
+	else
+	{
+		return OK;
+	}
+}
+
+int main()
+{
+	BiNode *pRoot = NULL;
+	CreateTree(&pRoot);
+	printf("\nPreOrder:");
+	PreOrderTraval(pRoot);
+	printf("\n");
+
+	printf("\nInOrder:");
+	InOrderTraval(pRoot);
+	printf("\n");
+
+	printf("\nPostOrder:");
+	PostOrderTraval(pRoot);
+	printf("\n");
+}
