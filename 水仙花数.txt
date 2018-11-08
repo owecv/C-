@@ -1,0 +1,59 @@
+#include <iostream>
+#include <stack>
+using namespace std;
+
+class Number
+{
+public:
+	int number;
+	int bits;//个位
+	int ten;//十位
+	int hundred;//百位
+	int values;//各位立方和
+	bool result;//是否为水仙花数
+};
+
+void function()
+{
+	cout << "IntPut a and b:";
+	int a, b;
+	cin >> a >> b;
+	stack<Number> MyStack;
+	int max = a > b ? a : b;
+	int min = a < b ? a : b;
+	for (int i = min;i <= max;++i)
+	{
+		Number temp;
+		temp.number = i;
+		int v = temp.number;
+		temp.bits=v % 10;
+		v = v / 10;
+		temp.ten = v % 10;
+		v = v / 10;
+		temp.hundred = v % 10;
+		temp.values = temp.bits*temp.bits*temp.bits + temp.ten*temp.ten*temp.ten + temp.hundred*temp.hundred*temp.hundred;
+		if (temp.number == temp.values)
+		{
+			temp.result = true;
+		}
+		else
+		{
+			temp.result = false;
+		}
+		if (temp.result == true)
+		{
+			MyStack.push(temp);
+		}
+	}
+	while (MyStack.size() != 0)
+	{
+		cout << MyStack.top().number<<endl;
+		MyStack.pop();
+	}
+}
+
+int main()
+{
+	function();
+	return 0;
+}
