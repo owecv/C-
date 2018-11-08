@@ -1,0 +1,26 @@
+#include <iostream>
+using namespace std;
+
+void function()
+{
+	int a = 0;
+	cin >> a;
+	try
+	{
+		if (a < 0)
+		{
+			throw "a<0";
+		}
+	}
+	catch (char *p)
+	{
+		cout << "erro!" << endl;;
+		cout << p << endl;
+	}
+}
+
+int main()
+{
+	function();
+	return  0;
+}
