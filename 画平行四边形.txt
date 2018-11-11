@@ -1,0 +1,56 @@
+#include <iostream>
+#include <list>
+using namespace std;
+
+void function()
+{
+	list<char> Hang;//ÐÐ
+	list<list<char>> Lie;//ÁÐ
+	int n = 10;
+	for (int i = 0;i < n;++i)
+	{
+		if (i == 0)
+		{
+			for (int j = 0;j < n;++j)
+			{
+				Hang.push_back('*');
+				Hang.push_back(' ');
+			}
+		}
+		else
+		{
+			for (int j = 0;j < i;++j)
+			{
+				Hang.push_back(' ');
+				Hang.push_back(' ');
+			}
+			for (int j = 0;j < n;++j)
+			{
+				Hang.push_back('*');
+				Hang.push_back(' ');
+			}
+		}
+		Lie.push_back(Hang);
+		Hang.clear();
+	}
+	for (int i = 0;i < n;++i)
+	{
+		list<char> temp= Lie.front();
+		list<char>::iterator it ;
+		it = temp.begin();
+		while(it != temp.end())
+		{
+			cout << *it;
+			++it;
+		}
+		cout << endl;
+		list<list<char>>::iterator it0 = Lie.begin();
+		Lie.erase(it0);
+	}
+}
+
+int main()
+{
+	function();
+	return 0;
+}
