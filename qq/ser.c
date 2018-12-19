@@ -38,7 +38,9 @@ void function3(MYSQL mysql);//查询指定信息的用户信息
 void function4(MYSQL mysql);//测试删除数据库中的记录
 void function5();//在数据库中插入记录
 
-void login(MYSQL mysql,char *buff,int fd);//处理客户端的登录请求
+void user_login(MYSQL mysql,char *buff,int fd);//处理客户端的登录请求
+void user_register(MYSQL mysql,char *buff,int fd);//处理客户端的用户注册请求
+void user_goaway(MYSQL mysql,char *buff,int fd);//处理客户端的下线请求
 
 int create_socket(char *ip,unsigned short port)
 {
@@ -98,11 +100,50 @@ int main()
 
         function0(mysql);//查询数据库的全部信息
 
-        int fd=STDIN;
-        fd_set fdset;
+        //int fd=STDIN;
+        //fd_set fdset;
 
-        struct timeval timeout={5,0};
+        //struct timeval timeout={5,0};
 
+        char recv_buff[128]={0};
+        
+        if(recv(c,recv_buff,127,0)<=0)
+        {   
+            break;
+        }
+        else
+        {   
+            printf("服务器端收到的Json包为：\n%s",recv_buff);
+            //user_login(mysql,recv_buff,c);
+        }
+
+        //对接收缓冲区中的Json包进行解析
+        Json::Value val;
+        Json::Reader read;
+
+        //Json包解析失败
+        if(-1==read.parse(recv_buff,val))
+        {
+            cout<<"Json parse failed!"<<endl;
+            return 0;
+        }
+        //判断客户端请求的操作类型
+        if(val["type"]==0)//客户端请求登录
+        {
+            user_login(mysql,recv_buff,c);
+        }
+        if(val["type"]==1)//客户端请求注册
+        {
+            user_register(mysql,recv_buff,c);
+        }
+        if(val["type"]==5)//客户端请求下线
+        {
+            user_goaway(mysql,recv_buff,c);
+        }
+
+
+
+#if 0
         while(1)
         {
             FD_ZERO(&fdset);
@@ -141,15 +182,17 @@ int main()
                 send(c,send_buff,sizeof(send_buff),0);
             }
         }
-        //关闭MySQL连接
-        mysql_close(&mysql);
-        //关闭socket套接字
-        close(c);
+#endif
     }
+    //关闭MySQL连接
+    mysql_close(&mysql);
+    //关闭socket套接字
+    //close(c);
+    return 0;
 }
 
 //处理客户端的登录事件
-void login(MYSQL mysql,char *buff,int fd)
+void user_login(MYSQL mysql,char *buff,int fd)
 {
     cout<<"buff "<<buff;
 
@@ -195,60 +238,112 @@ void login(MYSQL mysql,char *buff,int fd)
     cout<<"拼接完成的SQL查询语句为：" << query << endl;
 
     const char * i_query = query.c_str();
-    if (mysql_query(&mysql, i_query) != 0)//如果连接成功，则开始查询 .成功返回0
+
+#if 1
+    if (mysql_query(&mysql, i_query) != 0)//如果连接成功，则开始查询，成功返回0
     {
         fprintf(stderr, "fail to query!\n");
         //打印错误原因
         fprintf(stderr, " %s\n", mysql_error(&mysql));
-        exit(1);
+        
+        cout<<"query error!"<<endl<<"不存在此用户！"<<endl;
+        send(fd,"ok",2,0);
+
+        return;
     }
     else
     {
-        if ((result = mysql_store_result(&mysql)) == NULL) //保存查询的结果
+        result=mysql_store_result(&mysql);
+        int row_num = mysql_num_rows(result);//返回结果集中的行的数目
+        cout<<"结果集中的记录行数为："<<row_num<<endl;
+        if (row_num==0) //保存查询的结果
         {
             fprintf(stderr, "fail to store result!\n");
-            cout<<"query error!"<<endl<<"不存在此用户！"<<endl;
+            cout<<"query error!"<<endl<<"不存在此用户！登录失败。。"<<endl;
             send(fd,"ok",2,0);
             return ;
         }
         else
         {
-            MYSQL_ROW row;//代表的是结果集中的一行 
-            //my_ulonglong row;
-            int n = 1;
+            MYSQL_ROW row;//代表的是结果集中的一行
+
             while ((row = mysql_fetch_row(result)) != NULL)
             //读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
             {
                 cout<<"query succeed!"<<endl<<"服务器端该用户的信息为："<<endl;
                 
-                cout << "序号：" << n++ << "  ";
                 printf("姓名： %s\t", row[0]);//打印当前行的第一列的数据
                 printf("性别： %s\t", row[1]);//打印当前行的第二列的数据
-                
+                fflush(stdout);
+
+                //数据库查询，存在此用户且密码正确，给客户点进行确认登录并反馈登录结果
                 send(fd,"OK",2,0);
             }
         }
     }
-mysql_free_result(result);//释放结果集result
-
-#if 0
-    char cmd2[100]="";
-    sprintf(cmd2,"select * from user where name='%s' and passwd='%s'",val["name"].asString().c_str(),val["passwd"].asString().c_str());
-
-    if(mysql_real_query(mpcon,cmd2,strlen(cmd2)))
-    {
-        cout<<"3 query fail error"<<endl;
-        send(fd,"ok",2,0);
-        return ;
-    }
-    mp_res=mysql_store_result(mpcon);
-    if((mp_row=mysql_fetch_row(mp_res))!=0)
-    {
-        send(fd,"OK",2,0);
-    }
-    send(fd,"fail",4,0);   
 #endif
 
+mysql_free_result(result);//释放结果集result
+
+}
+
+void user_register(MYSQL mysql,char *buff,int fd)//处理客户端的用户注册请求
+{
+    cout<<"buff "<<buff;
+
+    Json::Value val;
+    Json::Reader read;
+
+    //Json包解析失败
+    if(-1==read.parse(buff,val))
+    {
+        cout<<"Json parse fail!"<<endl;
+        return ;
+    }
+
+    MYSQL_RES * result;//保存结果集的
+
+    if (mysql_set_character_set(&mysql, "gbk")) {   //将字符编码改为gbk
+    fprintf(stderr, "错误,字符集更改失败！ %s\n", mysql_error(&mysql));
+    }
+    
+    //拼接SQL语句
+    string query = "insert into user (name,passwd) values('";
+    string user_name=val["name"].asString().c_str();
+    string temp="',";
+    query=query+user_name+temp;
+    string user_passwd=val["passwd"].asString().c_str();
+    query=query+user_passwd;
+    temp.clear();
+    temp=")";
+    query=query+temp;
+    cout<<"拼接完成的SQL查询语句为：" << query << endl;
+
+    const char * i_query = query.c_str();
+
+    /*插入，成功则返回0*/
+    int flag = mysql_real_query(&mysql, i_query, (unsigned int)strlen(i_query));
+    if (flag)
+    {
+        printf("Insert data failure!\n");
+        //打印错误原因
+        fprintf(stderr, " %s\n", mysql_error(&mysql));
+        //注册失败，并给客户端进行反馈
+        send(fd,"ok",2,0);
+    }
+    else {
+        printf("Insert data success!\n");
+        //数据库插入新用户信息，并给客户反馈注册成功的结果
+        send(fd,"OK",2,0);
+    }
+    //关闭mysql连接
+    //mysql_close(&mysql);
+}
+
+void user_goaway(MYSQL mysql,char *buff,int fd)//处理客户端的下线请求
+{
+    //服务器处理客户端下线请求
+    send(fd,"OK",2,0);
 }
 
 void function0(MYSQL mysql)//查询数据库的全部信息

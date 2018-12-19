@@ -32,7 +32,9 @@ enum _TYPE
     TYPE_GO     //下线                  5
 }TYPE;
 
-void Login(int fd);
+void Login(int fd);//客户端登录操作
+void Register(int fd);//客户端注册操作
+void GoAway(int fd);//客户端下线操作
 
 void run(int fd)
 {
@@ -48,17 +50,15 @@ void run(int fd)
         }break;
         case 2:
         {
-            //Register(fd);
-            ;
+            Register(fd);
         }break;
         case 3:
         {
-            //Goaway(fd);
-            ;
+            GoAway(fd);
         }break;
         default:
         {
-            cout<<"cin error"<<endl;
+            cout<<"您的输入有误！请重新选择："<<endl;
         }
     }
 }
@@ -73,6 +73,7 @@ void Login(int fd)
     cout<<"please cin passwd:";
     cin>>pw;
 
+    //制作请求登录的Json包
     TYPE=TYPE_LOGIN;
     Json::Value val;
     val["type"]=TYPE;
@@ -89,10 +90,15 @@ void Login(int fd)
     //返回“OK”表示存在此用户，登录成功
     char recvbuff[10]="";
     //接收到的数据有误
+
     if(recv(fd,recvbuff,9,0)<=0)
     {
         cout<<"server unlink or error!"<<endl;
     }
+
+    cout<<"登录时，客户端收到的服务器端的鉴别结果："<<endl<<recvbuff<<endl;
+    fflush(stdout);
+
 
     //对返回的数据进行判断
     if(strncmp(recvbuff,"OK",2)==0)
@@ -100,9 +106,91 @@ void Login(int fd)
         cout<<"login success!"<<endl;
         //login_success(fd);
     }
-    else
+    if(strncmp(recvbuff,"ok",2)==0)
     {
-        cout<<"no success!"<<endl;
+        cout<<"login failed!"<<endl;
+    }
+}
+
+void Register(int fd)//客户端注册操作
+{
+    char name[20]="";
+    cout<<"请输入注册用户的名字：";
+
+    cin>>name;
+    char pw[20]="";
+    cout<<"密码：";
+    cin>>pw;
+
+    //制作请求注册的Json包
+    TYPE=TYPE_REG;//注册
+    Json::Value val;
+    val["type"]=TYPE;
+    val["name"]=name;
+    val["passwd"]=pw;
+
+    if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().    c_str()),0))
+    {
+        cout<<"发送注册新用户的Json包失败！"<<endl;
+        return ;
+    }
+
+    //对从服务器返回的数据进行处理
+    //返回“OK”表示注册新用户成功
+    char recvbuff[10]="";
+    //接收到的数据有误
+
+    if(recv(fd,recvbuff,9,0)<=0)
+    {
+        cout<<"server unlink or error!"<<endl;
+    }
+
+    cout<<"注册时，客户端收到的服务器端的鉴别结果："<<endl<<recvbuff<<endl;
+    fflush(stdout);
+
+    //对返回的数据进行判断
+    if(strncmp(recvbuff,"OK",2)==0)
+    {
+        cout<<"Register success!"<<endl;
+    }
+    if(strncmp(recvbuff,"ok",2)==0)
+    {
+        cout<<"Register failed!"<<endl;
+    }
+}
+
+void GoAway(int fd)//客户端下线操作
+{
+    Json::Value val;
+    TYPE=TYPE_GO;//用户下线
+    val["type"]=TYPE;
+    if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
+    {
+        cout<<"send json error"<<endl;
+        return;
+    }
+
+    //对从服务器返回的确认信息进行处理
+    //返回“OK”表示该用户下线成功
+    char recvbuff[10]="";
+    //接收到的数据有误
+
+    if(recv(fd,recvbuff,9,0)<=0)
+    {
+        cout<<"server unlink or error!"<<endl;
+    }
+
+    cout<<"下线操作时，客户端收到的服务器端的鉴别结果："<<endl<<recvbuff<<endl;
+    fflush(stdout);
+
+    //对返回的数据进行判断
+    if(strncmp(recvbuff,"OK",2)==0)
+    {
+        cout<<"GoAway success!"<<endl;
+    }
+    if(strncmp(recvbuff,"ok",2)==0)
+    {
+        cout<<"GoAway failed!"<<endl;
     }
 }
 
@@ -119,64 +207,9 @@ int main()
     int res=connect(sockfd,(struct sockaddr*)&saddr,sizeof(saddr));
     assert(res!=-1);
 
-    int fd=STDIN;
-    fd_set fdset;
-    struct timeval timeout={5,0};
-
     while(1)
     {
-
         run(sockfd);
-
-        //发送数据
-        FD_ZERO(&fdset);
-        FD_SET(fd,&fdset);//循环添加所有描述符
-        FD_SET(sockfd,&fdset);
-
-        int n=select(sockfd+2,&fdset,NULL,NULL,&timeout);
-        if(n==-1)
-        {
-            printf("selection failure\n");
-            break;
-        }
-        else if(n==0)
-        {
-            //printf("time out\n");
-        }
-        //对于可读事件，采用普通的recv函数读取数据
-        if(FD_ISSET(fd,&fdset))
-        {
-            printf("send:");
-            char send_buff[128]={0};//128字节的发送缓冲区
-            fgets(send_buff,128,stdin);
-            send(sockfd,send_buff,strlen(send_buff),0);
-
-            if(strncmp(send_buff,"end",3)==0)
-            {
-                exit(0);
-            }
-            memset(send_buff,0,128);
-        }
-
-        //接收数据
-
-        //对于可读事件，采用普通的recv函数读取数据
-
-        if(FD_ISSET(sockfd,&fdset))
-
-        {
-            char recv_buff[128]={0};//128字节的接收缓冲区
-            int ret=recv(sockfd,recv_buff,128,0);
-            {
-                if(ret<=0)
-                {
-                    break;
-                }
-            }
-            printf("recv:%s",recv_buff);
-            fflush(stdout);
-            memset(recv_buff,0,128);
-        }
     }
     close(sockfd);
 }
