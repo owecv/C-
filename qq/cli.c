@@ -295,9 +295,7 @@ int main()
     int res=connect(sockfd,(struct sockaddr*)&saddr,sizeof(saddr));
     assert(res!=-1);
 
-    while(1)
-    {
-        run(sockfd);
-    }
+    cout<<"连接服务器成功！"<<endl;
+    run(sockfd);
     close(sockfd);
 }
