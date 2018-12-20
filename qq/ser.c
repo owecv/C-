@@ -97,13 +97,9 @@ int main()
             continue;
         }
         printf("accept c=%d,ip=%s,port:%d\n",c,inet_ntoa(caddr.sin_addr),ntohs(caddr.sin_port));
-
+        
+        cout<<"服务器端注册的所有用户，及各用户在线状态："<<endl;
         function0(mysql);//查询数据库的全部信息
-
-        //int fd=STDIN;
-        //fd_set fdset;
-
-        //struct timeval timeout={5,0};
 
         char recv_buff[128]={0};
         
@@ -114,7 +110,6 @@ int main()
         else
         {   
             printf("服务器端收到的Json包为：\n%s",recv_buff);
-            //user_login(mysql,recv_buff,c);
         }
 
         //对接收缓冲区中的Json包进行解析
@@ -136,53 +131,10 @@ int main()
         {
             user_register(mysql,recv_buff,c);
         }
-        if(val["type"]==5)//客户端请求下线
+        if(val["type"]==2)//客户端请求下线
         {
             user_goaway(mysql,recv_buff,c);
         }
-
-
-
-#if 0
-        while(1)
-        {
-            FD_ZERO(&fdset);
-            FD_SET(c,&fdset);//循环添加所有描述符
-            FD_SET(fd,&fdset);//将键盘也添加进来
-
-            int n=select(c+2,&fdset,NULL,NULL,&timeout);
-            if(n==-1)
-            {
-                printf("selection failure\n");
-                break;
-            }
-            else if(n==0)
-            {
-                //printf("time out\n");
-            }
-            if(FD_ISSET(c,&fdset))
-            {
-                char recv_buff[128]={0};
-                if(recv(c,recv_buff,127,0)<=0)
-                {
-                    break;
-                }
-                else
-                {
-                    printf("recv:%s",recv_buff);
-                    login(mysql,recv_buff,sockfd);
-                }
-            }
- 
-            if(FD_ISSET(fd,&fdset))
-            {
-                printf("send:");
-                char send_buff[128]={0};
-                fgets(send_buff,128,stdin);
-                send(c,send_buff,sizeof(send_buff),0);
-            }
-        }
-#endif
     }
     //关闭MySQL连接
     mysql_close(&mysql);
@@ -205,19 +157,6 @@ void user_login(MYSQL mysql,char *buff,int fd)
         cout<<"Json parse fail!"<<endl;
         return ;
     }
-
-#if 0
-    MYSQL *mpcon=mysql_init((MYSQL *)0);
-    MYSQL_RES *mp_res;
-    MYSQL_ROW mp_row;
-
-    //if(!mysql_real_connect(mpcon,"127.0.0.1","root","1234","chat",3306,NULL,0))
-    if(!mysql_real_connect(mpcon,"127.0.0.1","root","891256","chat",3306,NULL,0))
-    {
-        cout<<"sql link error"<<endl;
-        return ;
-    }
-#endif
 
     MYSQL_RES * result;//保存结果集的
 
@@ -272,18 +211,44 @@ void user_login(MYSQL mysql,char *buff,int fd)
             {
                 cout<<"query succeed!"<<endl<<"服务器端该用户的信息为："<<endl;
                 
-                printf("姓名： %s\t", row[0]);//打印当前行的第一列的数据
-                printf("性别： %s\t", row[1]);//打印当前行的第二列的数据
+                printf("ID： %s\t", row[0]);//打印当前行的第一列的数据        
+                printf("姓名： %s\t", row[1]);//打印当前行的第二列的数据
+                printf("密码： %s\t", row[2]);//打印当前行的第三列的数据
+                printf("用户状态： %s\n", row[3]);//打印当前行的第一列的数据
                 fflush(stdout);
+            }
 
-                //数据库查询，存在此用户且密码正确，给客户点进行确认登录并反馈登录结果
+            //数据库查询，存在此用户且密码正确，更改服务器端用户在线状态
+            //拼接SQL语句
+            string query = "update user set status='on' where name='";
+            string user_name=val["name"].asString().c_str();
+            string temp="'";
+            query=query+user_name+temp;
+            cout<<"拼接完成的SQL查询语句为：" << query << endl;
+
+            const char * i_query = query.c_str();
+            if (mysql_query(&mysql, i_query) != 0)//如果连接成功，则开始查询，成功返回0
+            {
+                fprintf(stderr, "fail to query!\n");
+                //打印错误原因
+                fprintf(stderr, " %s\n", mysql_error(&mysql));
+
+                cout<<"query error!"<<endl;
+                cout<<"服务器更新用户在线状态失败！"<<endl;
+                send(fd,"ok",2,0);
+
+                return;
+            }
+            else
+            {
+                //给客户点进行确认登录并反馈登录结果
                 send(fd,"OK",2,0);
             }
         }
     }
 #endif
 
-mysql_free_result(result);//释放结果集result
+    mysql_free_result(result);//释放结果集result
 
 }
 
@@ -371,17 +336,15 @@ void function0(MYSQL mysql)//查询数据库的全部信息
 		{
 			MYSQL_ROW row;//代表的是结果集中的一行 
 						  //my_ulonglong row;
-			int n = 1;
 			while ((row = mysql_fetch_row(result)) != NULL)
 				//读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
 			{
-				cout << "序号：" << n++ << "  ";
-				//cout << mysql_fetch_field(result) << endl;
-				printf("姓名： %s\t", row[0]);//打印当前行的第一列的数据
-										   //cout <<"name is " << (char *)row[0] << "\t";
-										   //cout << typeid(row[0]).name() << endl;
-				printf("密码： %s\t", row[1]);//打印当前行的第一列的数据
-				
+                printf("ID： %s\t", row[0]);//打印当前行的第一列的数据        
+                printf("姓名： %s\t", row[1]);//打印当前行的第二列的数据
+                printf("密码： %s\t", row[2]);//打印当前行的第三列的数据
+                printf("用户状态： %s\t", row[3]);//打印当前行的第一列的数据
+                fflush(stdout);
+
                 cout << endl;
 			}
 		}
@@ -414,7 +377,7 @@ void function1(MYSQL mysql)//查询数据库的第一列
 		{
 			MYSQL_ROW row;//代表的是结果集中的一行
 			while ((row = mysql_fetch_row(result)) != NULL)
-				//读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
+			//读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
 			{
 				printf("姓名： %s\n", row[0]);//打印当前行的第一列的数据
 			}
