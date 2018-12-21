@@ -48,7 +48,9 @@ void function5();//在数据库中插入记录
 
 void user_login(MYSQL mysql,char *buff,int fd);//处理客户端的登录请求
 void user_register(MYSQL mysql,char *buff,int fd);//处理客户端的用户注册请求
+void user_exit(int fd);//处理客户端用户退出请求
 void user_goaway(MYSQL mysql,char *buff,int fd);//处理客户端的下线请求
+void user_chat_one_to_one(MYSQL mysql,char *buff,int fd);//处理客户端“一对一”聊天请求
 
 //void process(MYSQL mysql,int fd);//服务器一直循环等待接收客户端的链接，如果接收到客户端的链接就把链接交给这个函数处理。然后继续循环等待接收其他客户端的链接
 void *user_process(void * arg);
@@ -114,6 +116,9 @@ int main()
         int len=sizeof(caddr);
 
         int c=accept(sockfd,(struct sockaddr*)&caddr,(socklen_t*)&len);//接收客户端链接
+        
+        printf("accept c=%d,ip=%s,port:%d\n",c,inet_ntoa(caddr.sin_addr),ntohs(caddr.sin_port));
+
 
         pthread_t id;
 
@@ -131,7 +136,7 @@ int main()
             pthread_create(&id,NULL,user_process,(void *)&parm);
             //process(mysql,c);
         }
-        pthread_join(id,NULL);
+        //pthread_join(id,NULL);
     
     }
     //关闭MySQL连接
@@ -263,7 +268,7 @@ void user_login(MYSQL mysql,char *buff,int fd)
                     return;
                 }
                 //判断客户端请求的操作类型
-                if(val["type"]==3)//客户端请求列出所有在线用户
+                if(val["type"]==4)//客户端请求列出所有在线用户
                 {
                     user_dispaly(mysql,fd);//查询出所有在线用户，并发送给客户端
                 }
@@ -271,10 +276,14 @@ void user_login(MYSQL mysql,char *buff,int fd)
                 {
                     user_register(mysql,recv_buff,fd);
                 }
-                if(val["type"]==2)//客户端请求下线
+                if(val["type"]==3)//客户端请求下线并退出
                 {
                     user_goaway(mysql,recv_buff,fd);
                 }
+                //if(val["type"]==5)//客户端请求一对一聊天
+                //{
+                //   user_chat_one_to_one(mysql,recv_buff,fd);
+                //}
 
             }
         }
@@ -333,14 +342,106 @@ void user_register(MYSQL mysql,char *buff,int fd)//处理客户端的用户注�
         //数据库插入新用户信息，并给客户反馈注册成功的结果
         send(fd,"OK",2,0);
     }
+
+    cout<<"该用户注册成功！等待下一步操作（登录或退出）"<<endl;
+    char recv_buff[128]={0};
+
+    if(recv(fd,recv_buff,127,0)<=0)
+    {
+        cout<<"error!"<<endl;
+    }
+    else
+    {
+        printf("服务器端收到的Json包为：\n%s",recv_buff);
+    }
+
+    //对接收缓冲区中的Json包进行解析
+    Json::Value val_after_register;
+    Json::Reader read_after_register;
+
+    //Json包解析失败
+    if(-1==read_after_register.parse(recv_buff,val_after_register))
+    {
+        cout<<"Json parse failed!"<<endl;
+        return;
+    }
+    //判断客户端请求的操作类型
+    if(val_after_register["type"]==0)//客户端注册成功，请求登录
+    {
+        user_login(mysql,recv_buff,fd);
+    }
+    if(val_after_register["type"]==1)//客户端请求注册
+    {
+        user_register(mysql,recv_buff,fd);
+        //send(fd,"ok",2,0);
+    }
+    if(val_after_register["type"]==2)//客户端请求退出
+    {
+        user_exit(fd);
+    }
     //关闭mysql连接
     //mysql_close(&mysql);
 }
 
-void user_goaway(MYSQL mysql,char *buff,int fd)//处理客户端的下线请求
+void user_exit(int fd)//处理客户端用户退出请求
 {
     //服务器处理客户端下线请求
     send(fd,"OK",2,0);
+
+    //关闭socket套接字
+    int c=fd;
+    close(c);
+}
+
+void user_goaway(MYSQL mysql,char *buff,int fd)//处理客户端的下线请求
+{
+    cout<<"服务器正在进行用户下线操作...";
+    cout<<"buff "<<buff;
+
+    Json::Value val;
+    Json::Reader read;
+
+    //Json包解析失败
+    if(-1==read.parse(buff,val))
+    {
+        cout<<"Json parse fail!"<<endl;
+        return ;
+    }
+
+
+    MYSQL_RES * result;//保存结果集的
+
+    if (mysql_set_character_set(&mysql, "gbk")) {   //将字符编码改为gbk
+    fprintf(stderr, "错误,字符集更改失败！ %s\n", mysql_error(&mysql));
+    }
+
+
+    //拼接SQL语句
+    string query = "update user set status='off' where name='";
+    string user_name=val["name"].asString().c_str();
+    string temp="'";
+    query=query+user_name+temp;
+    cout<<"拼接完成的SQL查询语句为：" << query << endl;
+
+    const char * i_query = query.c_str();
+    if (mysql_query(&mysql, i_query) != 0)//如果连接成功，则开始查询，成功返回0
+    {
+        fprintf(stderr, "fail to query!\n");
+        //打印错误原因
+        fprintf(stderr, " %s\n", mysql_error(&mysql));
+
+        cout<<"query error!"<<endl;
+        cout<<"服务器更新用户离线状态失败！"<<endl;
+        send(fd,"ok",2,0);
+
+        return;
+    }
+    else
+    {
+        //给客户点进行确认登录并反馈登录结果
+        send(fd,"OK",2,0);
+        cout<<"该用户下线成功！"<<endl;
+    }
 
     //关闭socket套接字
     int c=fd;
@@ -368,42 +469,57 @@ void *user_process(void *arg)
 
     cout<<"服务器端注册的所有用户，及各用户在线状态："<<endl;
     function0(mysql);//查询数据库的全部信息
+    
+    while(1)
+    {
+        char recv_buff[128]={0};
 
-    char recv_buff[128]={0};
+        if(recv(c,recv_buff,127,0)<=0)
+        {
+            //关闭该socket连接
+            close(c);
 
-    if(recv(c,recv_buff,127,0)<=0)
-    {
-        cout<<"error!"<<endl;
-    }
-    else
-    {
-        printf("服务器端收到的Json包为：\n%s",recv_buff);
-    }
+            cout<<"error!"<<endl;
+            cout<<"客户端意外退出！该连接已关闭！"<<endl;
+        }
+        else
+        {
+            printf("服务器端收到的Json包为：\n%s",recv_buff);
+        }
 
-    //对接收缓冲区中的Json包进行解析
-    Json::Value val;
-    Json::Reader read;
+        //对接收缓冲区中的Json包进行解析
+        Json::Value val;
+        Json::Reader read;
 
-    //Json包解析失败
-    if(-1==read.parse(recv_buff,val))
-    {
-        cout<<"Json parse failed!"<<endl;
-        return 0;
+        //Json包解析失败
+        if(-1==read.parse(recv_buff,val))
+        {
+            cout<<"Json parse failed!"<<endl;
+            return 0;
+        }
+        //判断客户端请求的操作类型
+        if(val["type"]==0)//客户端请求登录
+        {
+            user_login(mysql,recv_buff,c);
+        }
+        if(val["type"]==1)//客户端请求注册
+        {
+            user_register(mysql,recv_buff,c);
+        }
+        if(val["type"]==2)//客户端请求退出
+        {
+            user_exit(c);
+        }
+        if(val["type"]==3)//客户端请求下线并退出
+        {
+            user_goaway(mysql,recv_buff,c);
+            break;
+        }
+        if(val["type"]==5)//客户端请求进行一对一聊天
+        {
+            //user_chat_one_to_one(mysql,recv_buff,c);
+        }
     }
-    //判断客户端请求的操作类型
-    if(val["type"]==0)//客户端请求登录
-    {
-        user_login(mysql,recv_buff,c);
-    }
-    if(val["type"]==1)//客户端请求注册
-    {
-        user_register(mysql,recv_buff,c);
-    }
-    if(val["type"]==2)//客户端请求下线
-    {
-        user_goaway(mysql,recv_buff,c);
-    }
-
     //关闭socket套接字
     //close(c);
     return 0;
@@ -445,20 +561,108 @@ void user_dispaly(MYSQL mysql,int fd)//查询出所有在线用户，并发送�
 
             cout<<"所有在线用户如下："<<endl;
 
+            string user_online;//保存从结果集中分理出的在线用户信息
+
             while ((row = mysql_fetch_row(result)) != NULL)
             //读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
             {
                 printf("ID： %s\t", row[0]);//打印当前行的第一列的数据        
                 printf("姓名： %s\t", row[1]);//打印当前行的第二列的数据
-                printf("密码： %s\t", row[2]);//打印当前行的第三列的数据
-                printf("用户状态： %s\t", row[3]);//打印当前行的第一列的数据
-                fflush(stdout);
-
+                //printf("密码： %s\t", row[2]);//打印当前行的第三列的数据
+                //printf("用户状态： %s\t", row[3]);//打印当前行的第一列的数据
+                //fflush(stdout);
                 cout << endl;
+                string temp0="ID：";
+                string temp1="$Name：";
+                user_online=user_online+temp0+row[0]+temp1+row[1];
+                string temp="#";
+                user_online=user_online+temp;
             }
+            cout<<"发送给客户端的数据为："<<user_online.c_str()<<endl;
+            if(-1==send(fd,user_online.c_str(),strlen(user_online.c_str()),0))
+            {
+                cout<<"发送信息失败！"<<endl;
+                return ;
+            }   
+
         }
     }
     mysql_free_result(result);//释放结果集result
+}
+
+void user_chat_one_to_one(MYSQL mysql,char *buff,int fd)//处理客户端“一对一”聊天请求
+{
+    cout<<"正在进行“一对一”聊天处理..."<<endl;
+    cout<<"buff "<<buff;
+
+    Json::Value val;
+    Json::Reader read;
+
+    //Json包解析失败
+    if(-1==read.parse(buff,val))
+    {
+        cout<<"Json parse fail!"<<endl;
+        return ;
+    }
+    
+    //查询客户请求“一对一聊天的对反是否在线”
+    MYSQL_RES * result;//保存结果集的
+
+    if (mysql_set_character_set(&mysql, "gbk")) {   //将字符编码改为gbk
+    fprintf(stderr, "错误,字符集更改失败！ %s\n", mysql_error(&mysql));
+    }
+
+    //拼接SQL语句
+    string query = "select * from user where id='";
+    string user_name=val["ID"].asString().c_str();
+    string temp="' and status='on'";
+    query=query+user_name+temp;
+    
+    cout<<"拼接完成的SQL查询语句为：" << query << endl;
+
+    const char * i_query = query.c_str();
+
+    if (mysql_query(&mysql, i_query) != 0)//如果连接成功，则开始查询，成功返回0
+    {
+        fprintf(stderr, "fail to query!\n");
+        //打印错误原因
+        fprintf(stderr, " %s\n", mysql_error(&mysql));
+
+        cout<<"query error!"<<endl<<"不存在此用户！"<<endl;
+        send(fd,"ok",2,0);
+
+        return;
+    }
+    else
+    {
+        result=mysql_store_result(&mysql);
+        int row_num = mysql_num_rows(result);//返回结果集中的行的数目
+        cout<<"结果集中的记录行数为："<<row_num<<endl;
+        if (row_num==0) //保存查询的结果
+        {
+            fprintf(stderr, "fail to store result!\n");
+            cout<<"query error!"<<endl<<"该用户不在线！连接失败。。"<<endl;
+            send(fd,"ok",2,0);
+            return ;
+        }
+        else
+        {
+            MYSQL_ROW row;//代表的是结果集中的一行
+
+            while ((row = mysql_fetch_row(result)) != NULL)
+            //读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
+            {
+                cout<<"query succeed!"<<endl<<"服务器端该用户的信息为："<<endl;
+
+                printf("ID： %s\t", row[0]);//打印当前行的第一列的数据        
+                printf("姓名： %s\t", row[1]);//打印当前行的第二列的数据
+                printf("密码： %s\t", row[2]);//打印当前行的第三列的数据
+                printf("用户状态： %s\n", row[3]);//打印当前行的第一列的数据
+                fflush(stdout);
+             }
+            send(fd,"OK",2,0);
+        }
+    }
 }
 
 void function0(MYSQL mysql)//查询数据库的全部信息
