@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <string>
+#include <time.h>
 
 //json头文件
 #include <iostream>
@@ -22,53 +23,59 @@ using namespace Json;
 #define PORT 6000
 #define STDIN 0
 
-#if 0
 //枚举出所有的操作
 enum _TYPE
 {
-    TYPE_LOGIN, //登陆                  0
-    TYPE_REG,   //注册                  1
-    TYPE_ONE,   //一对一聊天            2
-    TYPE_GROUD, //群聊                  3
-    TYPE_LIST,  //列出所有在线的用户    4
-    TYPE_GO     //下线                  5
-}TYPE;
-#endif
-#if 0
-//枚举出所有的操作
-enum _TYPE
-{   
-    TYPE_LOGIN, //登陆                  0   0
-    TYPE_REG,   //注册                  1   1
-    TYPE_GOAway,//下线                  5   2  5->2  @
-    TYPE_LIST,  //列出所有在线的用户    4   3  4->3
-    TYPE_ONE,   //一对一聊天            2   4  2->4
-    TYPE_GROUD  //群聊                  3   5  3->5
-}TYPE;
-#endif
-//枚举出所有的操作
-enum _TYPE
-{
-    TYPE_LOGIN, //登陆                  0   0           0   
-    TYPE_REG,   //注册                  1   1           1
-    TYPE_EXIT,  //退出                                  2   NULL->2
-    TYPE_GOAway,//下线                  5   2  5->2  @  3   2->3
-    TYPE_LIST,  //列出所有在线的用户    4   3  4->3     4   3->4
-    TYPE_ONE,   //一对一聊天            2   4  2->4     5   4->5
-    TYPE_GROUD  //群聊                  3   5  3->5     6   5->6
+    TYPE_LOGIN, //登陆                          0
+    TYPE_REG,   //注册                          1
+    TYPE_EXIT,  //退出                          2
+    TYPE_GOAway,//下线                          3
+    TYPE_LIST,  //列出所有在线的用户            4
+    TYPE_ONE,   //一对一聊天                    5
+    TYPE_GROUD, //群聊                          6
+
+    TYPE_ACK,   //用户B同意和A进行“一对一聊天”  7
+    TYPE_NCK    //用户B拒绝和A进行“一对一聊天”  8
 }TYPE;
 
 string user_name;//保存用户名
+char name[20]="";//保存该客户端上已登录用户的名字
 
-void Login(int fd);//客户端登录操作
-void Register(int fd);//客户端注册操作
-void Exit(int fd);//客户端退出操作
-void GoAway(int fd);//客户端下线操作
-void ChatToOne(int fd);//一对一聊天操作
+void Login(int fd);//客户端请求进行登录操作
+void Register(int fd);//客户端请求进行注册操作
+void Exit(int fd);//客户端请求进行退出操作
+void GoAway(int fd);//客户端请求进行下线操作
+void ChatToOne(int fd);//客户端请求进行一对一聊天操作
+
+void cli_process(int fd);//当客户端和服务器建立上连接后，调用此函数进行处理
 
 void Login_success(int fd);//当服务器端反馈登录成功时，调用此函数进行处理
 
-void run(int fd)
+int main()
+{
+    int sockfd=socket(AF_INET,SOCK_STREAM,0);//调用socket函数创建套接字
+    assert(sockfd!=-1);
+
+    struct sockaddr_in saddr;
+    memset(&saddr,0,sizeof(saddr));
+    saddr.sin_family=AF_INET;
+    saddr.sin_port=htons(PORT);
+    saddr.sin_addr.s_addr=inet_addr(IP);
+
+    int res=connect(sockfd,(struct sockaddr*)&saddr,sizeof(saddr));
+    assert(res!=-1);
+
+    cout<<"连接服务器成功！"<<endl;
+
+    cli_process(sockfd);//当服务器端反馈登录成功时，调用此函数进行处理
+
+    //关闭连接
+    close(sockfd);
+    return 0;
+}
+
+
+void cli_process(int fd)//当服务器端反馈登录成功时，调用此函数进行处理
 {
     cout<<"请选择要进行的操作："<<endl;
     cout<<"1.登录\n2.注册\n3.退出\n"<<endl;
@@ -78,33 +85,33 @@ void run(int fd)
     {
         case 1:
         {
-            Login(fd);
+            Login(fd);//客户端请求进行登录操作
         }break;
         case 2:
         {
-            Register(fd);
+            Register(fd);//客户端请求进行注册操作
         }break;
         case 3:
         {
-            Exit(fd);
+            Exit(fd);//客户端请求进行退出操作
         }break;
         default:
         {
             cout<<"您的输入有误！请重新选择："<<endl;
+            cli_process(fd);
         }
     }
 }
 
-void Login(int fd)
+void Login(int fd)//客户端请求进行登录操作
 {
-    char name[20]="";
-    cout<<"please cin name:";
+    cout<<"请输入用户名：";
     cin>>name;
 
     user_name=name;
 
     char pw[20]="";
-    cout<<"please cin passwd:";
+    cout<<"请输入密码：";
     cin>>pw;
 
     //制作请求登录的Json包
@@ -116,21 +123,25 @@ void Login(int fd)
 
     if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
     {
-        cout<<"send reason fail!"<<endl;
+        cout<<"给服务器发送登录请求的JSON包失败！"<<endl;
         return ;
+    }
+    else
+    {
+        cout<<"给服务器发送登录请求的JSON包成功！"<<endl;
     }
 
     //对从服务器返回的数据进行处理
     //返回“OK”表示存在此用户，登录成功
     char recvbuff[10]="";
+    
     //接收到的数据有误
-
     if(recv(fd,recvbuff,9,0)<=0)
     {
         cout<<"server unlink or error!"<<endl;
     }
 
-    cout<<"登录时，客户端收到的服务器端的鉴别结果："<<endl<<recvbuff<<endl;
+    cout<<"登录时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
     fflush(stdout);
 
 
@@ -138,7 +149,7 @@ void Login(int fd)
     if(strncmp(recvbuff,"OK",2)==0)
     {
         cout<<"Login success!"<<endl;
-        //登录成功，获取用户在线列表
+        //登录成功，调用处理登录成功的函数的进行操作
         Login_success(fd);
     }
     if(strncmp(recvbuff,"ok",2)==0)
@@ -154,7 +165,7 @@ void Register(int fd)//客户端注册操作
 
     cin>>name;
     char pw[20]="";
-    cout<<"密码：";
+    cout<<"请输入注册用户的密码：";
     cin>>pw;
 
     //制作请求注册的Json包
@@ -169,25 +180,29 @@ void Register(int fd)//客户端注册操作
         cout<<"发送注册新用户的Json包失败！"<<endl;
         return ;
     }
+    else
+    {
+        cout<<"客户端给服务器发送注册请求的JSON包成功！"<<endl;
+    }
 
     //对从服务器返回的数据进行处理
     //返回“OK”表示注册新用户成功
     char recvbuff[10]="";
-    //接收到的数据有误
 
+    //接收到的数据有误
     if(recv(fd,recvbuff,9,0)<=0)
     {
         cout<<"server unlink or error!"<<endl;
     }
 
-    cout<<"注册时，客户端收到的服务器端的鉴别结果："<<endl<<recvbuff<<endl;
+    cout<<"注册时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
     fflush(stdout);
 
     //对返回的数据进行判断
     if(strncmp(recvbuff,"OK",2)==0)
     {
         cout<<"Register success!"<<endl;
-        run(fd);
+        cli_process(fd);
     }
     if(strncmp(recvbuff,"ok",2)==0)
     {
@@ -202,21 +217,25 @@ void Exit(int fd)//客户端退出操作
     val["type"]=TYPE;
     if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
     {
-        cout<<"send json error"<<endl;
+        cout<<"客户端发送退出请求的JSON包失败！"<<endl;
         return;
+    }
+    else
+    {
+        cout<<"客户端发送退出请求的JSON包成功！";
     }
 
     //对从服务器返回的确认信息进行处理
     //返回“OK”表示该用户下线成功
     char recvbuff[10]="";
-    //接收到的数据有误
 
+    //接收到的数据有误
     if(recv(fd,recvbuff,9,0)<=0)
     {
         cout<<"server unlink or error!"<<endl;
     }
 
-    cout<<"退出操作时，客户端收到的服务器端的反馈结果："<<endl<<recvbuff<<endl;
+    cout<<"退出操作时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
     fflush(stdout);
 
     //对返回的数据进行判断
@@ -228,11 +247,10 @@ void Exit(int fd)//客户端退出操作
     {
         cout<<"EXIT failed!"<<endl;
     }
-
     exit(0);
 }
 
-void GoAway(int fd)//客户端下线操作
+void GoAway(int fd)//客户端请求进行下线并退出的操作
 {
     Json::Value val;
     TYPE=TYPE_GOAway;//用户下线
@@ -240,21 +258,25 @@ void GoAway(int fd)//客户端下线操作
     val["name"]=user_name;
     if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
     {
-        cout<<"send json error"<<endl;
+        cout<<"客户端发送“下线并退出”请求的JSON包失败！"<<endl;
         return;
+    }
+    else
+    {
+        cout<<"客户端发送“下线并退出”请求的JSON包成功！"<<endl;
     }
 
     //对从服务器返回的确认信息进行处理
     //返回“OK”表示该用户下线成功
     char recvbuff[10]="";
-    //接收到的数据有误
 
+    //接收到的数据有误
     if(recv(fd,recvbuff,9,0)<=0)
     {
         cout<<"server unlink or error!"<<endl;
     }
 
-    cout<<"下线操作时，客户端收到的服务器端的鉴别结果："<<endl<<recvbuff<<endl;
+    cout<<"下线操作时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
     fflush(stdout);
 
     //对返回的数据进行判断
@@ -272,20 +294,25 @@ void GoAway(int fd)//客户端下线操作
 void ChatToOne(int fd)//处理客户端“一对一”聊天请求
 {
     cout<<"一对一聊天："<<endl;
-    cout<<"请输入对方的ID：";
-    int ID;
-    cin>>ID;
+    cout<<"请输入对方的姓名：";
+    char B_name[20]="";
+    cin>>name;
 
     //制作请求“一对一聊天”的Json包
     TYPE=TYPE_ONE;//一对一聊天
     Json::Value val;
     val["type"]=TYPE;
-    val["ID"]=ID;//对方的ID
+    val["name"]=name;//自己的名字
+    val["B_name"]=B_name;//对方的姓名
 
     if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
     {
-        cout<<"send reason fail!"<<endl;
+        cout<<"客户端发送“一对一聊天”请求的JSON包失败！"<<endl;
         return ;
+    }
+    else
+    {
+        cout<<"客户端发送“一对一聊天”请求的JSON包成功！"<<endl;
     }
 
     //对从服务器返回的数据进行处理
@@ -298,16 +325,17 @@ void ChatToOne(int fd)//处理客户端“一对一”聊天请求
         cout<<"error!"<<endl;
     }
 
-    cout<<"一对一时，客户端收到的服务器端的鉴别结果："<<endl<<recvbuff<<endl;
+    cout<<"一对一时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
     fflush(stdout);
 
 
     //对返回的数据进行判断
     if(strncmp(recvbuff,"OK",2)==0)
     {
-        cout<<"Connect to <<ID<<success!"<<endl;
+        cout<<"“一对一聊天”请求成功！"<<endl;
+        cout<<"Connect to "<<name<<" success!"<<endl;
         //连接成功
-        cout<<"send to "<<ID<<":";
+        cout<<"send to "<<name<<":";
         char send_message[1024]="";
         cin>>send_message;
         
@@ -318,8 +346,8 @@ void ChatToOne(int fd)//处理客户端“一对一”聊天请求
         }
         else
         {
-            cout<<"发送消息成功！"<<endl;
-            
+            cout<<"该消息已成功发送至服务器！"<<endl;
+#if 0      
             //接收对方发送过来的消息
             char recv_message[1024]="";
             
@@ -330,139 +358,195 @@ void ChatToOne(int fd)//处理客户端“一对一”聊天请求
             }
             else
             {
-                cout<<"message from "<<ID<<" :"<<recv_message<<endl;
+                cout<<"message from "<<name<<" :"<<recv_message<<endl;
             }
+#endif
         }
     }
     if(strncmp(recvbuff,"ok",2)==0)
     {
-        cout<<"Connect to <<ID<<failed!"<<endl;
+        cout<<"该用户不在线！"<<endl;
+        cout<<"Connect to "<<name<<"failed!"<<endl;
     }
-
 }
 
 void Login_success(int fd)//当服务器端反馈登录成功时，调用此函数进行处理
 {
+    int stdin_fd=STDIN;
+    fd_set fdset;
+
+    struct timeval timeout={5,0};
+
+    cout<<"请选择要进行的操作："<<endl;
+    cout<<"1：获取在线用户列表"<<endl;
+    cout<<"2：一对一聊天"<<endl;
+    cout<<"3：群聊"<<endl;
+    cout<<"4：下线并退出"<<endl;
+
+    int  choice;
+
     while(1)
     {
-        cout<<"请选择要进行的操作："<<endl;
-        cout<<"1：获取在线用户列表"<<endl;
-        cout<<"2：一对一聊天"<<endl;
-        cout<<"3：群聊"<<endl;
-        cout<<"4：下线并退出"<<endl;
+        choice=0;
 
-        int  choice;
-        cin>>choice;
+        FD_ZERO(&fdset);
+        FD_SET(fd,&fdset);//将描述符添加进来
+        FD_SET(stdin_fd,&fdset);//将键盘事件添加到监听队列中
 
-        switch(choice)
+        int n=select(fd+2,&fdset,NULL,NULL,&timeout);
+        if(n==-1)
         {
-        case 1://获取在线用户列表
+            cout<<"selection failure"<<endl;
+        }
+        else if(n==0)
         {
-            TYPE=TYPE_LIST;
-            cout<<"TYPE:"<<TYPE<<endl;
+        
+        }
+        if(FD_ISSET(stdin_fd,&fdset))
+        {
+            cin>>choice;
+            cout<<"请选择要进行的操作："<<endl;
+            cout<<"1：获取在线用户列表"<<endl;
+            cout<<"2：一对一聊天"<<endl;
+            cout<<"3：群聊"<<endl;
+            cout<<"4：下线并退出"<<endl;
 
-            Json::Value val;
-            val["type"]=TYPE;
+            switch(choice)
+            {
+                case 1://获取在线用户列表
+                {
+                    TYPE=TYPE_LIST;
+                    cout<<"TYPE:"<<TYPE<<endl;
 
-            send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0);
-            
-            cout<<"等待接收服务器数据..."<<endl;
-            char buff[1024*1024]="";
-            if(recv(fd,buff,1024*1024,0)<=0)
+                    Json::Value val;
+                    val["type"]=TYPE;
+
+                    send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0);
+
+                    cout<<"等待接收服务器数据..."<<endl;
+                    char buff[1024*1024]="";
+                    if(recv(fd,buff,1024*1024,0)<=0)
+                    {
+                        cout<<"error!"<<endl;
+                    }
+                    else
+                    {
+                        printf("客户端收到的数据为：%s\n",buff);
+                        fflush(stdout);
+                    }
+
+                    cout<<"在线的用户有："<<endl;
+                    int i=0;
+                    while(buff[i]!='\0')
+                    {
+                        if(buff[i]=='$')
+                        {
+                            cout<<"\t";
+                        }
+                        else if(buff[i]=='#')
+                        {
+                            cout<<endl;
+                        }
+                        else
+                        {
+                            cout<<buff[i];
+                        }
+                        ++i;
+                    }
+                }break;
+                case 2://一对一聊天
+                {
+                    ChatToOne(fd);
+                }break;
+                case 3://群聊
+                {
+#if 0
+                    TYPE=TYPE_GROUD;
+                    Json::Value val;
+                    val["type"]=TYPE;
+                    string data;
+                    cin>>data;
+                    val["data"]=data;
+
+                    send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0);
+#endif
+                }break;
+                case 4://下线并退出
+                {
+                    GoAway(fd);
+                    exit(0);
+                }break;
+            }
+        }
+        if(FD_ISSET(fd,&fdset))
+        {
+            //接收服务器发送过来的消息
+            char recv_message[1024]="";
+
+            //接收消息有误
+            if(recv(fd,recv_message,1023,0)<=0)
             {
                 cout<<"error!"<<endl;
             }
             else
             {
-                printf("客户端收到的数据为：%s\n",buff);
-                fflush(stdout);
-            }
+                cout<<"收到的消息为："<<recv_message<<endl;
+                //对从服务器接收到的信息进行判断
+                if(strncmp(recv_message,"A_ask_B",7)==0)
+                {
+                    cout<<"用户A请求进行“一对一”聊天！"<<endl;
+                    cout<<"是否同意？1：同意 2：拒绝"<<endl;
+                    cout<<"请选择：";
 
-            cout<<"在线的用户有："<<endl;
-            int i=0;
-            while(buff[i]!='\0')
-            {
-                if(buff[i]=='$')
-                {
-                    cout<<"\t";
-                }
-                else if(buff[i]=='#')
-                {
-                    cout<<endl;
+                    int n;//保存用户的选择
+                    cin>>n;
+
+                    if(n==1)
+                    {
+                        char message[1024]="我（B）同意和A进行“一对一聊天”。";
+                        //制作请求注册的Json包
+                        TYPE=TYPE_ACK;//用户B同意和A进行“一对一聊天”
+                        Json::Value val;
+                        val["type"]=TYPE;
+                        val["name"]=name;
+                        val["message"]=message;
+
+                        if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
+                        {
+                            cout<<"客户端发送B同意和A进行“一对一聊天”请求的JSON包失败！"<<endl;
+                            return ;
+                        }
+                        else
+                        {
+                            cout<<"客户端发送B同意和A进行“一对一聊天”请求的JSON包成功！"<<endl;
+                        }
+                    }
+                    if(n==2)
+                    {
+                        char message[1024]="我（B）不同意和A进行“一对一聊天”。";
+                        //制作请求注册的Json包
+                        TYPE=TYPE_NCK;//用户B同意和A进行“一对一聊天”
+                        Json::Value val;
+                        val["type"]=TYPE;
+                        val["name"]=name;
+                        val["message"]=message;
+
+                        if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
+                        {
+                            cout<<"客户端发送B不同意和A进行“一对一聊天”请求的JSON包失败！"<<endl;
+                            return ;
+                        }   
+                        else
+                        {
+                            cout<<"客户端发送B不同意和A进行“一对一聊天”请求的JSON包成功！"<<endl;
+                        }   
+                    }
                 }
                 else
                 {
-                    cout<<buff[i];
+                    cout<<"new message:"<<recv_message<<endl;
                 }
-                ++i;
             }
-        }break;
-        case 2://一对一聊天
-        {
-#if 0
-            TYPE=TYPE_LIST; 
-            Json::Value val;
-            val["type"]=TYPE;
-            send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0);    
-
-            char buff[128]="";
-            if(0<recv(fd,buff,127,0))
-            {
-                cout<<buff<<endl;
-            }
-            TYPE=TYPE_ONE;
-            Json::Value raw;
-            raw["type"]=TYPE;
-            string data;
-            string name;
-            cout<<"please put data"<<endl;
-            cin>>data;
-            raw["data"]=data;
-            cout<<"please put name"<<endl;
-            cin>>name;
-            raw["name"]=name;
-            int fd;
-            cin>>fd;
-            raw["fd"]=fd;
-            send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0);
-#endif
-            ChatToOne(fd);
-        }break;
-        case 3://群聊
-        {
-            TYPE=TYPE_GROUD;
-            Json::Value val;
-            val["type"]=TYPE;
-            string data;
-            cin>>data;
-            val["data"]=data;
-
-            send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0);    
-        }break;
-        case 4://下线并退出
-        {
-            GoAway(fd);
-            exit(0);
-        }break;
+        }
     }
-    }
-}
-
-
-int main()
-{
-    int sockfd=socket(AF_INET,SOCK_STREAM,0);//调用socket函数创建套接字
-    assert(sockfd!=-1);
-
-    struct sockaddr_in saddr;
-    memset(&saddr,0,sizeof(saddr));
-    saddr.sin_family=AF_INET;
-    saddr.sin_port=htons(PORT);
-    saddr.sin_addr.s_addr=inet_addr(IP);
-    int res=connect(sockfd,(struct sockaddr*)&saddr,sizeof(saddr));
-    assert(res!=-1);
-
-    cout<<"连接服务器成功！"<<endl;
-    run(sockfd);
-    close(sockfd);
 }
