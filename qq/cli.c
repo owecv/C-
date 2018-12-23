@@ -32,20 +32,22 @@ enum _TYPE
     TYPE_GOAway,//下线                          3
     TYPE_LIST,  //列出所有在线的用户            4
     TYPE_ONE,   //一对一聊天                    5
-    TYPE_GROUD, //群聊                          6
+    TYPE_GROUP, //群聊                          6
 
     TYPE_ACK,   //用户B同意和A进行“一对一聊天”  7
-    TYPE_NCK    //用户B拒绝和A进行“一对一聊天”  8
+    TYPE_NCK,   //用户B拒绝和A进行“一对一聊天”  8
+
+    TYPE_MESSAGE//服务器需要转发的信息类JSON包  9
 }TYPE;
 
-string user_name;//保存用户名
-char name[20]="";//保存该客户端上已登录用户的名字
+char name_self[20]="";//保存该客户端上已登录用户的名字
 
 void Login(int fd);//客户端请求进行登录操作
 void Register(int fd);//客户端请求进行注册操作
 void Exit(int fd);//客户端请求进行退出操作
 void GoAway(int fd);//客户端请求进行下线操作
 void ChatToOne(int fd);//客户端请求进行一对一聊天操作
+void ChatToGroup(int fd);//客户端请求进行群聊
 
 void cli_process(int fd);//当客户端和服务器建立上连接后，调用此函数进行处理
 
@@ -106,9 +108,7 @@ void cli_process(int fd)//当服务器端反馈登录成功时，调用此函数
 void Login(int fd)//客户端请求进行登录操作
 {
     cout<<"请输入用户名：";
-    cin>>name;
-
-    user_name=name;
+    cin>>name_self;
 
     char pw[20]="";
     cout<<"请输入密码：";
@@ -118,7 +118,7 @@ void Login(int fd)//客户端请求进行登录操作
     TYPE=TYPE_LOGIN;
     Json::Value val;
     val["type"]=TYPE;
-    val["name"]=name;
+    val["name"]=name_self;
     val["passwd"]=pw;
 
     if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
@@ -255,7 +255,7 @@ void GoAway(int fd)//客户端请求进行下线并退出的操作
     Json::Value val;
     TYPE=TYPE_GOAway;//用户下线
     val["type"]=TYPE;
-    val["name"]=user_name;
+    val["name"]=name_self;
     if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
     {
         cout<<"客户端发送“下线并退出”请求的JSON包失败！"<<endl;
@@ -296,13 +296,13 @@ void ChatToOne(int fd)//处理客户端“一对一”聊天请求
     cout<<"一对一聊天："<<endl;
     cout<<"请输入对方的姓名：";
     char B_name[20]="";
-    cin>>name;
+    cin>>B_name;
 
     //制作请求“一对一聊天”的Json包
     TYPE=TYPE_ONE;//一对一聊天
     Json::Value val;
     val["type"]=TYPE;
-    val["name"]=name;//自己的名字
+    val["A_name"]=name_self;//自己的名字
     val["B_name"]=B_name;//对方的姓名
 
     if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
@@ -317,10 +317,10 @@ void ChatToOne(int fd)//处理客户端“一对一”聊天请求
 
     //对从服务器返回的数据进行处理
     //返回“OK”表示存在此用户且该用户在线，服务器准备成功
-    char recvbuff[10]="";
+    char recvbuff[1024]="";
 
     //接收到的数据有误
-    if(recv(fd,recvbuff,9,0)<=0)
+    if(recv(fd,recvbuff,1023,0)<=0)
     {
         cout<<"error!"<<endl;
     }
@@ -328,45 +328,79 @@ void ChatToOne(int fd)//处理客户端“一对一”聊天请求
     cout<<"一对一时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
     fflush(stdout);
 
+    //对收到的服务器“一对一聊天”JSON反馈包进行解析
+    Json::Value val_recv;
+    Json::Reader read_recv;
+
+    //Json包解析失败
+    if(-1==read_recv.parse(recvbuff,val_recv))
+    {
+        cout<<"Json parse fail!"<<endl;
+        return ;
+    }
 
     //对返回的数据进行判断
-    if(strncmp(recvbuff,"OK",2)==0)
+    char ink[10]="";
+    strcpy(ink,val_recv["OK"].toStyledString().c_str());
+
+    if(ink[1]=='O'&&ink[2]=='K')
     {
         cout<<"“一对一聊天”请求成功！"<<endl;
-        cout<<"Connect to "<<name<<" success!"<<endl;
+        cout<<"Connect to "<<B_name<<" success!"<<endl;
         //连接成功
-        cout<<"send to "<<name<<":";
+        cout<<"send to "<<B_name<<":";
         char send_message[1024]="";
         cin>>send_message;
-        
-        if(-1==send(fd,send_message,strlen(send_message),0))
+       
+        //制作信息类Json包，专门用于传递聊天的消息内容
+        TYPE=TYPE_MESSAGE;//信息类JSON包
+        Json::Value val_message;
+        val_message["type"]=TYPE;
+        val_message["A_name"]=val_recv["A_name"];//A（自己）的名字
+        val_message["A_fd"]=val_recv["A_fd"];//A的fd
+        val_message["B_name"]=val_recv["B_name"];//B(对方)的名字
+        val_message["B_fd"]=val_recv["B_fd"];//B的fd
+        val_message["message"]=send_message;//消息内容
+
+        if(-1==send(fd,val_message.toStyledString().c_str(),strlen(val_message.toStyledString().c_str()),0))
         {
             cout<<"发送消息失败！"<<endl;
-            return;
+            return ;
         }
         else
         {
             cout<<"该消息已成功发送至服务器！"<<endl;
-#if 0      
-            //接收对方发送过来的消息
-            char recv_message[1024]="";
-            
-            //接收消息有误
-            if(recv(fd,recv_message,1023,0)<=0)
-            {
-                cout<<"error!"<<endl;
-            }
-            else
-            {
-                cout<<"message from "<<name<<" :"<<recv_message<<endl;
-            }
-#endif
         }
     }
-    if(strncmp(recvbuff,"ok",2)==0)
+    if(ink[1]=='o'&&ink[2]=='k')
     {
         cout<<"该用户不在线！"<<endl;
-        cout<<"Connect to "<<name<<"failed!"<<endl;
+        cout<<"Connect to “"<<B_name<<"” failed!"<<endl;
+    }
+}
+
+void ChatToGroup(int fd)//客户端请求进行群聊
+{
+    cout<<"发起群聊，给所有在线用户发送消息..."<<endl;
+    cout<<"请输入要群发的消息：";
+    char message_buff[1024]="";
+    cin>>message_buff;
+
+    //制作请求“群聊”的Json包
+    TYPE=TYPE_GROUP;//一对一聊天
+    Json::Value val;
+    val["type"]=TYPE;//JSON包的类型
+    val["A_name"]=name_self;//自己的名字
+    val["message"]=message_buff;//群发的消息
+   
+    if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
+    {
+        cout<<"客户端发送“群聊”的JSON包失败！"<<endl;
+        return ;
+    }
+    else
+    {
+        cout<<"客户端发送“群聊”的JSON包成功！"<<endl;
     }
 }
 
@@ -460,16 +494,7 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                 }break;
                 case 3://群聊
                 {
-#if 0
-                    TYPE=TYPE_GROUD;
-                    Json::Value val;
-                    val["type"]=TYPE;
-                    string data;
-                    cin>>data;
-                    val["data"]=data;
-
-                    send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0);
-#endif
+                    ChatToGroup(fd);
                 }break;
                 case 4://下线并退出
                 {
@@ -490,7 +515,25 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
             }
             else
             {
-                cout<<"收到的消息为："<<recv_message<<endl;
+                cout<<"收到的消息为："<<endl<<recv_message<<endl;
+
+                //对接收到的数据进行解析
+                Json::Value val;
+                Json::Reader read;
+                
+                //Json包解析失败
+                if(-1==read.parse(recv_message,val))
+                {
+                    cout<<"Json parse fail!"<<endl;
+                    return ;
+                }
+
+                //判断判断收到的JSON包的类型，进行相应的处理
+                if(val["type"]==9||val["type"]==6)//消息类JSON
+                {
+                    cout<<"Message from user:"<<val["A_name"].toStyledString().c_str()<<val["message"].toStyledString().c_str()<<endl;
+                }
+
                 //对从服务器接收到的信息进行判断
                 if(strncmp(recv_message,"A_ask_B",7)==0)
                 {
@@ -508,7 +551,7 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                         TYPE=TYPE_ACK;//用户B同意和A进行“一对一聊天”
                         Json::Value val;
                         val["type"]=TYPE;
-                        val["name"]=name;
+                        val["name"]=name_self;
                         val["message"]=message;
 
                         if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
@@ -528,7 +571,7 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                         TYPE=TYPE_NCK;//用户B同意和A进行“一对一聊天”
                         Json::Value val;
                         val["type"]=TYPE;
-                        val["name"]=name;
+                        val["name"]=name_self;
                         val["message"]=message;
 
                         if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
@@ -541,10 +584,6 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                             cout<<"客户端发送B不同意和A进行“一对一聊天”请求的JSON包成功！"<<endl;
                         }   
                     }
-                }
-                else
-                {
-                    cout<<"new message:"<<recv_message<<endl;
                 }
             }
         }
