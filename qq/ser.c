@@ -464,13 +464,31 @@ void *user_process(void *arg)//服务器一直循环等待接收客户端的链�
         {
             user_chat_to_group(mysql,recv_buff);//处理客户端请求的“群聊”事件
         }
-        if(val["type"]==7)//客户端B同意和A进行“一对一聊天”
-        {
-            //user_chat_one_to_one_success(info);
-        }
-        if(val["type"]==9)//服务器收到一个消息类的JSON包
+        if(val["type"]==7)//服务器收到一个消息类的JSON包
         {
             user_message_transmit(recv_buff);//解析并转发服务器收到的消息类JSON包
+        }
+        if(val["type"]==8)//客户端请求启动“文件传输服务”
+        {
+            int i;
+            pid_t pid;
+            pid=fork();
+            printf("pid:%d\n",pid);
+            if(pid==-1)
+            {
+                printf("复制进程出错！\n");
+                sleep(10);
+            }
+            if(pid>0)//父进程
+            {
+                send(fd,"OK",2,0);
+            }
+            if(pid==0)
+            {
+                printf("正在启动ftp_ser程序...\n");
+                execl("/bin/ftp_ser","ftp_ser",NULL,NULL);
+            }
+
         }
     }
     //关闭socket套接字
@@ -681,7 +699,6 @@ void user_chat_one_to_one(MYSQL mysql,char *buff,int fd)//处理客户端“一�
             //3.对客户端的“一对一聊天”请求进行确认
           
             Json::Value val_OK;
-            val_OK["type"]=7;
             val_OK["OK"]="OK";
             val_OK["A_name"]=val["A_name"];//Ay 用户的名字
             val_OK["A_fd"]=A_fd;//A用户的fd
