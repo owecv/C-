@@ -30,6 +30,10 @@
 
 #include <stack>
 
+//fork的头文件
+#include <sys/types.h>
+#include <sys/wait.h>
+
 char *ip="192.168.126.131";
 unsigned short port=6000;
 
@@ -57,6 +61,7 @@ void user_goaway(MYSQL mysql,char *buff,int fd);//处理客户端的下线请求
 void user_dispaly(MYSQL mysql,int fd);//查询出所有在线用户，并发送给客户端
 void user_chat_one_to_one(MYSQL mysql,char *buff,int fd);//处理客户端“一对一”聊天请求
 void user_chat_to_group(MYSQL mysql,char *buff);//处理客户端请求的“群聊”事件
+void user_file_transmit(int fd);//处理客户端的文件传输请求
 
 void user_message_transmit(char *buff);//解析并转发服务器收到的消息类JSON包
 
@@ -470,25 +475,7 @@ void *user_process(void *arg)//服务器一直循环等待接收客户端的链�
         }
         if(val["type"]==8)//客户端请求启动“文件传输服务”
         {
-            int i;
-            pid_t pid;
-            pid=fork();
-            printf("pid:%d\n",pid);
-            if(pid==-1)
-            {
-                printf("复制进程出错！\n");
-                sleep(10);
-            }
-            if(pid>0)//父进程
-            {
-                send(fd,"OK",2,0);
-            }
-            if(pid==0)
-            {
-                printf("正在启动ftp_ser程序...\n");
-                execl("/home/wangpeng/桌面/qq/文件传输服务/ftp_ser","ftp_ser",NULL,NULL);
-            }
-
+            user_file_transmit(fd);//处理客户端的文件传输请求
         }
     }
     //关闭socket套接字
@@ -679,7 +666,7 @@ void user_chat_one_to_one(MYSQL mysql,char *buff,int fd)//处理客户端“一�
                     while ((row = mysql_fetch_row(result)) != NULL)
                     //读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
                     {
-                        cout<<"query succeed!"<<endl<<"服务器端该用户的信息为："<<endl;
+                            cout<<"query succeed!"<<endl<<"服务器端该用户的信息为："<<endl;
                     
                         printf("ID： %s\t", row[0]);//打印当前行的第一列的数据        
                         printf("姓名： %s\t", row[1]);//打印当前行的第二列的数据
@@ -819,6 +806,29 @@ void user_chat_to_group(MYSQL mysql,char *buff)//处理客户端请求的“群�
         }
     }
     mysql_free_result(result);//释放结果集result
+}
+
+void user_file_transmit(int fd)//处理客户端的文件传输请求
+{
+    int i;
+    int status;
+    pid_t pid;
+    pid=fork();
+    printf("pid:%d\n",pid);
+    if(pid==-1)
+    {
+        printf("复制进程出错！\n");
+    }
+    if(pid>0)//父进程
+    {
+        send(fd,"OK",2,0);
+        //waitpid(pid,&status,0);
+    }
+    if(pid==0)
+    {
+        printf("正在启动ftp_ser程序...\n");
+        execl("/home/wangpeng/桌面/qq/文件传输服务/ftp_ser","ftp_ser",NULL,NULL);
+    }
 }
 
 void function0(MYSQL mysql)//查询数据库的全部信息

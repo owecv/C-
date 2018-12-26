@@ -51,6 +51,7 @@ void GetUserOnline(int fd);//客户端请求获取在线用户列表
 void ChatToOne(int fd);//客户端请求进行一对一聊天操作
 void ChatToGroup(int fd);//客户端请求进行群聊
 void GoAway(int fd);//客户端请求进行下线操作
+void FileTransmit(int fd);//客户端请求进行文件传输操作
 
 void cli_process(int fd);//当客户端和服务器建立上连接后，调用此函数进行处理
 
@@ -449,6 +450,67 @@ void ChatToGroup(int fd)//客户端请求进行群聊
     }
 }
 
+void FileTransmit(int fd)//客户端请求进行文件传输操作
+{
+    TYPE=TYPE_tFILE;
+    cout<<"TYPE:"<<TYPE<<endl;
+
+    Json::Value val;
+    val["type"]=TYPE;
+
+    if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
+    {
+        cout<<"客户端发送请求“文件传输服务”的JSON包失败！"<<endl;
+        return ;
+    }
+    else
+    {
+        cout<<"客户端发送请求“文件传输服务”的JSON包成功！"<<endl;
+    }
+
+    //对从服务器返回的确认信息进行处理
+    //返回“OK”表示服务器准备就绪，ftp_ser已启动
+    char recvbuff[10]="";
+
+    //接收到的数据有误
+    if(recv(fd,recvbuff,9,0)<=0)
+    {
+        cout<<"server unlink or error!"<<endl;
+    }
+
+    cout<<"请求文件传输服务时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
+    fflush(stdout);
+
+    //对返回的数据进行判断
+    if(strncmp(recvbuff,"OK",2)==0)
+    {
+        cout<<"“文件传输服务”请求成功，ftp_ser已启动！"<<endl;
+            
+        int i;
+        int status;
+        pid_t pid;
+        pid=fork();
+        printf("pid:%d\n",pid);
+        if(pid==-1)
+        {
+            printf("复制进程出错！\n");
+        }
+        if(pid>0)//父进程
+        {
+            waitpid(pid,&status,0);
+        }
+        if(pid==0)
+        {
+            printf("正在启动ftp_cli程序...\n");
+            execl("/home/wangpeng/桌面/qq/ftp_cli","ftp_cli",NULL,NULL);
+        }
+    }
+    if(strncmp(recvbuff,"ok",2)==0)
+    {
+        cout<<"“文件传输服务”请求失败！"<<endl;
+    }
+}
+
 void Login_success(int fd)//当服务器端反馈登录成功时，调用此函数进行处理
 {
     int stdin_fd=STDIN;
@@ -508,64 +570,7 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                 }break;
                 case 4://文件传输请求
                 {
-                    TYPE=TYPE_tFILE;
-                    cout<<"TYPE:"<<TYPE<<endl;
-                    
-                    Json::Value val;
-                    val["type"]=TYPE;
-
-                    if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
-                    {
-                        cout<<"客户端发送请求“文件传输服务”的JSON包失败！"<<endl;
-                        return ;
-                    }
-                    else
-                    {
-                        cout<<"客户端发送请求“文件传输服务”的JSON包成功！"<<endl;
-                    }
-                    
-                    //对从服务器返回的确认信息进行处理
-                    //返回“OK”表示服务器准备就绪，ftp_ser已启动
-                    char recvbuff[10]="";
-                    
-                    //接收到的数据有误
-                    if(recv(fd,recvbuff,9,0)<=0)
-                    {
-                        cout<<"server unlink or error!"<<endl;
-                    }
-                    
-                    cout<<"请求文件传输服务时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
-                    fflush(stdout);
-                    
-                    //对返回的数据进行判断
-                    if(strncmp(recvbuff,"OK",2)==0)
-                    {
-                        cout<<"“文件传输服务”请求成功，ftp_ser已启动！"<<endl;
-                    }
-                    if(strncmp(recvbuff,"ok",2)==0)
-                    {
-                        cout<<"“文件传输服务”请求失败！"<<endl;
-                    }
-
-                    int i;
-                    int status;
-                    pid_t pid;
-                    pid=fork();
-                    printf("pid:%d\n",pid);
-                    if(pid==-1)
-                    {
-                        printf("复制进程出错！\n");
-                    }
-                    if(pid>0)//父进程
-                    {
-                        waitpid(pid,&status,0);
-                    }
-                    if(pid==0)
-                    {
-                        printf("正在启动ftp_cli程序...\n");
-                        execl("/home/wangpeng/桌面/qq/ftp_cli","ftp_cli",NULL,NULL);
-                    }
-
+                    FileTransmit(fd);//客户端请求进行文件传输操作
                 }break;
                 case 5://下线并退出
                 {
@@ -604,7 +609,6 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                 {
                     cout<<"Message from user:"<<val["A_name"].toStyledString().c_str()<<val["message"].toStyledString().c_str()<<endl;
                 }
-
             }
         }
     }
