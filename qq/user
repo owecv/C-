@@ -1,0 +1,8 @@
+CREATE TABLE `user` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '用户编号',
+  `name` char(20) DEFAULT NULL,
+  `passwd` char(20) DEFAULT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'off',
+  `sock_fd` int(10) unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=latin1

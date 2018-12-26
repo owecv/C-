@@ -19,7 +19,11 @@
 using namespace std;
 using namespace Json;
 
-#define IP "192.168.126.128"
+//fork头文件
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#define IP "192.168.126.131"
 #define PORT 6000
 #define STDIN 0
 
@@ -544,22 +548,22 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                     }
 
                     int i;
+                    int status;
                     pid_t pid;
                     pid=fork();
                     printf("pid:%d\n",pid);
                     if(pid==-1)
                     {
                         printf("复制进程出错！\n");
-                        sleep(10);
                     }
                     if(pid>0)//父进程
                     {
-
+                        waitpid(pid,&status,0);
                     }
                     if(pid==0)
                     {
                         printf("正在启动ftp_cli程序...\n");
-                        execl("/bin/ftp_cli","ftp_cli",NULL,NULL);
+                        execl("/home/wangpeng/桌面/qq/ftp_cli","ftp_cli",NULL,NULL);
                     }
 
                 }break;
