@@ -23,7 +23,7 @@ using namespace Json;
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define IP "192.168.126.131"
+#define IP "192.168.126.130"
 #define PORT 6000
 #define STDIN 0
 
@@ -502,7 +502,7 @@ void FileTransmit(int fd)//客户端请求进行文件传输操作
         if(pid==0)
         {
             printf("正在启动ftp_cli程序...\n");
-            execl("/home/wangpeng/桌面/qq/ftp_cli","ftp_cli",NULL,NULL);
+            execl("/home/wangpeng/代码/qq/ftp_cli","ftp_cli",NULL,NULL);
         }
     }
     if(strncmp(recvbuff,"ok",2)==0)

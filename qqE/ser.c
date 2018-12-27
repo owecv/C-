@@ -34,7 +34,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-char *ip="192.168.126.131";
+char *ip="192.168.126.130";
 unsigned short port=6000;
 
 //MySQL
@@ -74,7 +74,7 @@ int main()
 
     MYSQL mysql; //声明MySQL的句柄
     const char * host = "127.0.0.1";//因为是作为本机测试，所以填写的是本>    地IP
-    const char * user = "root";//这里改为你的用户名，即连接MySQL的用户名
+    const char * user = "wangpeng";//这里改为你的用户名，即连接MySQL的用户名
     const char * passwd = "891256";//这里改为你的用户密码
     const char * db = "chat";//这里改为你要连接的数据库的名字,一个数据可>    能有几张表
     unsigned int port = 3306;//这是MySQL的服务器的端口，如果你没有修改过>    的话就是3306。
@@ -827,7 +827,7 @@ void user_file_transmit(int fd)//处理客户端的文件传输请求
     if(pid==0)
     {
         printf("正在启动ftp_ser程序...\n");
-        execl("/home/wangpeng/桌面/qq/文件传输服务/ftp_ser","ftp_ser",NULL,NULL);
+        execl("/home/wangpeng/代码/qq/文件传输服务/ftp_ser","ftp_ser",NULL,NULL);
     }
 }
 
