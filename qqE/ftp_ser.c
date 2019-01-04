@@ -9,7 +9,7 @@
 #include<pthread.h>
 #include<fcntl.h>//文件操作有关的头文件
 
-#define SER_PORT 6000
+#define SER_PORT 8000
 #define SER_IP "127.0.0.1"
 
 int socket_create();
@@ -22,7 +22,7 @@ int main()
     while(1)
     {
         int len=sizeof(caddr);
-        int c=accept(sockfd,(struct sockaddr*)&caddr,&len);
+        int c=accept(sockfd,(struct sockaddr*)&caddr,(socklen_t*)&len);
         if(c<0)
         {
             continue;

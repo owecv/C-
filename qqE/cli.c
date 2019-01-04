@@ -39,7 +39,8 @@ enum _TYPE
     TYPE_GROUP,     //群聊                          6
 
     TYPE_MESSAGE,   //服务器需要转发的信息类JSON包  7
-    TYPE_tFILE      //客户端请求文件传输服务        8
+    TYPE_tFILE,     //客户端请求文件传输服务        8
+	TYPE_VIDEO		//客户端请求进行视频聊天		9
 }TYPE;
 
 char name_self[20]="";//保存该客户端上已登录用户的名字
@@ -52,6 +53,7 @@ void ChatToOne(int fd);//客户端请求进行一对一聊天操作
 void ChatToGroup(int fd);//客户端请求进行群聊
 void GoAway(int fd);//客户端请求进行下线操作
 void FileTransmit(int fd);//客户端请求进行文件传输操作
+void VideoChat(int fd);//客户端请求进行视频聊天
 
 void cli_process(int fd);//当客户端和服务器建立上连接后，调用此函数进行处理
 
@@ -511,6 +513,107 @@ void FileTransmit(int fd)//客户端请求进行文件传输操作
     }
 }
 
+void VideoChat(int fd)//客户端请求进行视频聊天
+{
+	cout<<"正在准备视频聊天..."<<endl;
+	cout<<"请输入对方的名字：";
+	char B_name[20]="";
+	cin>>B_name;
+
+	//制作请求“视频聊天”的Json包
+	TYPE=TYPE_VIDEO;//一对一聊天
+	Json::Value val;
+	val["type"]=TYPE;//JSON包的类型
+	val["A_name"]=name_self;//自己的名字
+	val["B_name"]=B_name;//对方的姓名
+
+    if(-1==send(fd,val.toStyledString().c_str(),strlen(val.toStyledString().c_str()),0))
+    {
+        cout<<"客户端发送“视频聊天”请求的JSON包失败！"<<endl;
+        return ;
+    }
+    else
+    {
+        cout<<"客户端发送“视频聊天”请求的JSON包成功！"<<endl;
+    }
+
+	//对从服务器返回的数据进行处理
+    //返回“OK”表示存在此用户且该用户在线，服务器准备成功
+    char recvbuff[1024]="";
+
+    //接收到的数据有误
+    if(recv(fd,recvbuff,1023,0)<=0)
+    {
+        cout<<"error!"<<endl;
+    }
+
+    cout<<"视频聊天时，服务器端反馈的结果为："<<endl<<recvbuff<<endl;
+    fflush(stdout);
+
+    //对收到的服务器“一对一聊天”JSON反馈包进行解析
+    Json::Value val_recv;
+    Json::Reader read_recv;
+
+    //Json包解析失败
+    if(-1==read_recv.parse(recvbuff,val_recv))
+    {
+        cout<<"Json parse fail!"<<endl;
+        return ;
+    }
+	
+	//对返回的数据进行判断
+	char ink[10]="";
+	strcpy(ink,val_recv["OK"].toStyledString().c_str());
+
+	if(ink[1]=='O'&&ink[2]=='K')
+	{
+		cout<<"“一对一聊天”请求成功！"<<endl;
+
+		int i;
+    	int status;
+    	pid_t pid;
+    	pid=fork();
+   		printf("pid:%d\n",pid);
+    	if(pid==-1)
+    	{
+    		printf("复制进程出错！\n");
+    	}
+    	if(pid>0)//父进程
+    	{
+        	waitpid(pid,&status,0);
+    	}
+    	if(pid==0)
+    	{
+			cout<<"正在启动“video_cli程序“准备发送自己的视频！"<<endl;
+			cout<<"参数:"<<val_recv["B_IP"].toStyledString().c_str()<<endl;
+			char p[17]="";
+			strcpy(p,val_recv["B_IP"].toStyledString().c_str());
+			cout<<"p:"<<p<<endl;
+			cout<<"p:";
+			for(int i=0;i<17;++i)
+			{
+				cout<<p[i];
+			}
+			cout<<endl;
+
+			char p0[16]="";
+			int j=1;
+			for(int i=0;i<15;++i)
+			{
+				p0[i]=p[j];
+				++j;
+			}
+			p0[16]='\0';
+			cout<<"p0[16]="<<p0<<endl;
+			execl("/home/wangpeng/代码/qq/video_cli","./video_cli",p0,NULL);
+    	}
+	}
+	if(ink[1]=='o'&&ink[2]=='k')
+	{
+		cout<<"视频聊天请求失败！"<<endl;
+	}
+}
+
 void Login_success(int fd)//当服务器端反馈登录成功时，调用此函数进行处理
 {
     int stdin_fd=STDIN;
@@ -523,7 +626,8 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
     cout<<"2：一对一聊天"<<endl;
     cout<<"3：群聊"<<endl;
     cout<<"4:文件传输请求"<<endl;
-    cout<<"5：下线并退出"<<endl;
+	cout<<"5:视频聊天请求"<<endl;
+    cout<<"6：下线并退出"<<endl;
 
     int  choice;
 
@@ -552,7 +656,8 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
             cout<<"2：一对一聊天"<<endl;
             cout<<"3：群聊"<<endl;
             cout<<"4:文件传输请求"<<endl;
-            cout<<"5：下线并退出"<<endl;
+			cout<<"5:视频聊天请求"<<endl;
+            cout<<"6：下线并退出"<<endl;
 
             switch(choice)
             {
@@ -572,7 +677,11 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                 {
                     FileTransmit(fd);//客户端请求进行文件传输操作
                 }break;
-                case 5://下线并退出
+				case 5://视频聊天请求
+				{
+					VideoChat(fd);//客户端请求进行视频聊天
+				}break;
+                case 6://下线并退出
                 {
                     GoAway(fd);
                     exit(0);
@@ -605,10 +714,56 @@ void Login_success(int fd)//当服务器端反馈登录成功时，调用此函�
                 }
 
                 //判断判断收到的JSON包的类型，进行相应的处理
-                if(val["type"]==7||val["type"]==6)//消息类JSON
+                if(val["type"]==6||val["type"]==7)//消息类JSON
                 {
                     cout<<"Message from user:"<<val["A_name"].toStyledString().c_str()<<val["message"].toStyledString().c_str()<<endl;
                 }
+
+				if(val["type"]==9)//视频聊天类的JSON包
+				{
+					cout<<val["A_name"].toStyledString().c_str()<<"正在请求“视频聊天”！"<<endl;
+					 
+					int i;
+        			int status;
+        			pid_t pid;
+        			pid=fork();
+        			printf("pid:%d\n",pid);
+        			if(pid==-1)
+        			{
+            			printf("复制进程出错！\n");
+        			}
+        			if(pid>0)//父进程
+        			{
+            			waitpid(pid,&status,0);
+        			}
+        			if(pid==0)
+        			{
+						cout<<"正在启动“video_server程序“准备接受对方的视频！"<<endl;
+						cout<<"参数:"<<val["B_IP"].toStyledString().c_str()<<endl;
+						char p[17]="";
+						   
+						strcpy(p,val["B_IP"].toStyledString().c_str());
+						cout<<"p:"<<p<<endl;
+						cout<<"p:";
+						for(int i=0;i<17;++i)
+						{
+							cout<<p[i];
+						}
+						cout<<endl;
+
+						char p0[16]="";
+						int j=1;
+						for(int i=0;i<15;++i)
+						{   
+							p0[i]=p[j];
+							++j;
+						}
+						p0[16]='\0';
+						cout<<"p0[16]="<<p0<<endl;
+
+            			execl("/home/wangpeng/代码/qq/video_ser","./video_ser",p0,NULL);
+        			}
+				}
             }
         }
     }

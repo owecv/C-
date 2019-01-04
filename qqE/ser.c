@@ -45,6 +45,22 @@ using namespace std;
 using namespace std;
 using namespace Json;
 
+//枚举出所有的操作
+enum _TYPE
+{
+    TYPE_LOGIN,     //登陆                          0
+    TYPE_REG,       //注册                          1
+    TYPE_EXIT,      //退出                          2
+    TYPE_GOAway,    //下线                          3
+    TYPE_LIST,      //列出所有在线的用户            4
+    TYPE_ONE,       //一对一聊天                    5
+    TYPE_GROUP,     //群聊                          6
+
+    TYPE_MESSAGE,   //服务器需要转发的信息类JSON包  7
+    TYPE_tFILE,     //客户端请求文件传输服务        8
+	TYPE_VIDEO		//客户端请求进行视频聊天		9
+}TYPE;
+
 void function0(MYSQL mysql);//查询数据库的全部信息
 void function1(MYSQL mysql);//查询数据库的第一列
 void function2(MYSQL mysql);//一些API函数的测试
@@ -54,7 +70,7 @@ void function5();//在数据库中插入记录
 
 int create_socket(char *ip,unsigned short port);//创建socket套接字
 
-void user_login(MYSQL mysql,char *buff,int fd);//处理客户端的登录请求
+void user_login(MYSQL mysql,char *buff,int fd,string ip,int port);//处理客户端的登录请求
 void user_register(MYSQL mysql,char *buff,int fd);//处理客户端的用户注册请求
 void user_exit(int fd);//处理客户端用户退出请求
 void user_goaway(MYSQL mysql,char *buff,int fd);//处理客户端的下线请求
@@ -62,6 +78,7 @@ void user_dispaly(MYSQL mysql,int fd);//查询出所有在线用户，并发送�
 void user_chat_one_to_one(MYSQL mysql,char *buff,int fd);//处理客户端“一对一”聊天请求
 void user_chat_to_group(MYSQL mysql,char *buff);//处理客户端请求的“群聊”事件
 void user_file_transmit(int fd);//处理客户端的文件传输请求
+void user_video_chat(MYSQL mysql,int fd,char *buff);//处理客户端的视频聊天请求
 
 void user_message_transmit(char *buff);//解析并转发服务器收到的消息类JSON包
 
@@ -98,8 +115,10 @@ int main()
     //用结构体封装要传递给process函数的参数
     typedef struct data
     {
-        MYSQL mysql;
-        int fd;
+        MYSQL mysql;//MySQL的句柄
+        int fd;//获得到的fd
+		string ip;//连接到的客户端的IP
+		int port;//连接到的客户端的port
     }data;
 
     while(1)
@@ -123,7 +142,8 @@ int main()
             data parm;
             parm.mysql=mysql;
             parm.fd=c;
-
+			parm.ip=inet_ntoa(caddr.sin_addr);
+			parm.port=ntohs(caddr.sin_port);
             pthread_create(&id,NULL,user_process,(void *)&parm);
         }
         //pthread_join(id,NULL);
@@ -151,7 +171,7 @@ int create_socket(char *ip,unsigned short port)
 }
 
 //处理客户端的登录事件
-void user_login(MYSQL mysql,char *buff,int fd)
+void user_login(MYSQL mysql,char *buff,int fd,string ip,int port)
 {
     //cout<<"buff "<<buff;
 
@@ -268,6 +288,69 @@ void user_login(MYSQL mysql,char *buff,int fd)
                 else
                 {
                     cout<<"在MySQL中插入该用户与服务器连接的sock_fd成功！"<<endl;
+
+                    //给客户点进行确认登录并反馈登录结果
+                    send(fd,"OK",2,0);
+                    //cout<<"该用户上线成功！等待下一步操作..."<<endl;
+                }
+            }
+
+			//数据库查询，存在此用户且密码正确，更改服务器端用户IP
+            //拼接SQL语句
+			query.clear();
+			user_name.clear();
+			temp.clear();
+
+            query = "update user set ip= '";
+			query=query+ip;
+			temp="' ";
+			query=query+temp;
+			temp.clear();
+			temp="where name='";
+			query=query+temp;
+
+            user_name=val["name"].asString().c_str();
+			temp.clear();
+            temp="'";
+            query=query+user_name+temp;
+            cout<<"拼接完成的SQL查询语句为：" << query << endl;
+
+            const char * i_query0 = query.c_str();
+            if (mysql_query(&mysql, i_query0) != 0)//如果连接成功，则开始查询，成功返回0
+            {
+                fprintf(stderr, "fail to query!\n");
+                //打印错误原因
+                fprintf(stderr, " %s\n", mysql_error(&mysql));
+
+                cout<<"query error!"<<endl;
+                cout<<"服务器更新用户IP失败！"<<endl;
+                send(fd,"ok",2,0);
+
+                return;
+            }
+            else
+            {
+                //该用户上线成功，将该用户的sock_fd添加到MySQL数据库中
+                char cmd[100]="";
+                sprintf(cmd,"update user set port=%d where name='%s'",port,val["name"].asString().c_str());
+
+                cout<<"在MySQL中插入该用户和服务器链接的port的SQL语句为："<<endl;
+                cout<<cmd<<endl;
+
+                if (mysql_real_query(&mysql, cmd,strlen(cmd)) != 0)//如果连接成功，则开始查询，成功返回0
+                {
+                    fprintf(stderr, "fail to query!\n");
+                    //打印错误原因
+                    fprintf(stderr, " %s\n", mysql_error(&mysql));
+
+                    cout<<"query error!"<<endl;
+                    cout<<"服务器插入连接端口号（port）失败！"<<endl;
+
+                    return;
+                }
+                else
+                {
+                    cout<<"在MySQL中插入该用户与服务器连接的port成功！"<<endl;
 
                     //给客户点进行确认登录并反馈登录结果
                     send(fd,"OK",2,0);
@@ -396,14 +479,18 @@ void *user_process(void *arg)//服务器一直循环等待接收客户端的链�
     //将主函数传递给process函数的参数，进行解析
     typedef struct data
     {
-        MYSQL mysql;
-        int fd;//客户端的sock_fd
+		MYSQL mysql;//MySQL的句柄
+        int fd;//客户端的fd
+		string ip;//客户端的IP
+		int port;//连接到的客户端的port
     }data;
 
     //将参数传进来
     data * parm=(data *)arg;
     MYSQL mysql=parm->mysql;
     int fd=parm->fd;
+	string ip=parm->ip;
+	int port=parm->port;
 
     cout<<"服务器端注册的所有用户，及各用户在线状态："<<endl;
     function0(mysql);//查询数据库的全部信息
@@ -441,7 +528,7 @@ void *user_process(void *arg)//服务器一直循环等待接收客户端的链�
         //判断客户端请求的操作类型
         if(val["type"]==0)//客户端请求登录
         {
-            user_login(mysql,recv_buff,fd);
+            user_login(mysql,recv_buff,fd,ip,port);
         }
         if(val["type"]==1)//客户端请求注册
         {
@@ -477,6 +564,11 @@ void *user_process(void *arg)//服务器一直循环等待接收客户端的链�
         {
             user_file_transmit(fd);//处理客户端的文件传输请求
         }
+		if(val["type"]==9)//客户端请求启动“文件传输服务”
+        {
+ 			user_video_chat(mysql,fd,recv_buff);//处理客户端的视频聊天请求
+ 		}
+
     }
     //关闭socket套接字
     close(fd);
@@ -831,6 +923,202 @@ void user_file_transmit(int fd)//处理客户端的文件传输请求
     }
 }
 
+void user_video_chat(MYSQL mysql,int fd,char *buff)//处理客户端的视频聊天请求
+{
+	cout<<"正在处理信息类JSON包..."<<endl;
+  
+ 	Json::Value val;
+ 	Json::Reader read;
+ 
+	//Json包解析失败
+ 	if(-1==read.parse(buff,val))
+ 	{
+ 		cout<<"Json parse fail!"<<endl;
+ 		return ;
+ 	}
+
+	string A_name=val["A_name"].asString().c_str();
+	string B_name=val["B_name"].asString().c_str();
+	string A_IP;
+	string B_IP;
+	int A_port;
+	int B_port;
+	int A_fd;
+	int B_fd;
+	//查询客户请求“视频聊天的对方（B）是否在线”
+    MYSQL_RES * result;//保存结果集的
+
+    if (mysql_set_character_set(&mysql, "gbk")) {   //将字符编码改为gbk
+    fprintf(stderr, "错误,字符集更改失败！ %s\n", mysql_error(&mysql));
+    }
+
+	//拼接SQL语句
+    //查询B用户是否在线,并且查询出B_fd
+    string query = "select * from user where name='";
+    string user_name=val["B_name"].asString().c_str();
+    string temp="' and status='on'";
+    query=query+user_name+temp;
+    
+    cout<<"拼接完成的SQL查询语句为：" << query << endl;
+
+    const char * i_query = query.c_str();
+
+    if (mysql_query(&mysql, i_query) != 0)//如果连接成功，则开始查询，成功返回0
+    {
+        fprintf(stderr, "fail to query!\n");
+        //打印错误原因
+        fprintf(stderr, " %s\n", mysql_error(&mysql));
+
+        cout<<"query error!"<<endl<<"不存在此用户！"<<endl;
+        send(fd,"ok",2,0);
+
+        return;
+    }
+    else
+    {
+        result=mysql_store_result(&mysql);
+        int row_num = mysql_num_rows(result);//返回结果集中的行的数目
+        cout<<"结果集中的记录行数为："<<row_num<<endl;
+        if (row_num==0) //保存查询的结果
+        {
+            fprintf(stderr, "fail to store result!\n");
+            cout<<"query error!"<<endl<<"B用户不在线！连接失败。。"<<endl;
+            send(fd,"ok",2,0);
+            return ;
+        }
+        else
+        {
+            MYSQL_ROW row;//代表的是结果集中的一行
+
+            while ((row = mysql_fetch_row(result)) != NULL)
+            //读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
+            {
+                cout<<"query succeed!"<<endl<<"服务器端该用户的信息为："<<endl;
+
+                printf("ID： %s\t", row[0]);//打印当前行的第一列的数据        
+                printf("姓名： %s\t", row[1]);//打印当前行的第二列的数据
+                printf("密码： %s\t", row[2]);//打印当前行的第三列的数据
+                printf("用户状态： %s\t", row[3]);//打印当前行的第四列的数据
+                printf("fd： %s\t", row[4]);//打印当前行的第五列列的数据
+				printf("IP： %s\t", row[5]);//打印当前行的第六列的数据
+				printf("端口号： %s\t", row[6]);//打印当前行的第七列的数据
+                fflush(stdout);
+
+                cout << endl;
+                B_fd=atoi(row[4]);
+				B_IP=row[5];
+				B_port=atoi(row[6]);
+                fflush(stdout);
+            }
+            printf("B的fd为：%d\n",B_fd);
+			cout<<"B的IP为："<<B_IP<<endl;
+			cout<<"B的port为："<<B_port<<endl;
+
+			//拼接SQL语句，查询A自己的fd
+            string query = "select * from user where name='";
+            string user_name=val["A_name"].asString().c_str();
+            string temp="'";
+            query=query+user_name+temp;
+            
+            cout<<"拼接完成的SQL查询语句为：" << query << endl;
+            
+            const char * i_query = query.c_str();
+            
+            if (mysql_query(&mysql, i_query) != 0)//如果连接成功，则开始查询，成功返回0
+            {
+                fprintf(stderr, "fail to query!\n");
+                //打印错误原因
+                fprintf(stderr, " %s\n", mysql_error(&mysql));
+            
+                cout<<"query error!"<<endl<<"不存在此用户！"<<endl;
+                send(fd,"ok",2,0);
+                
+                return;
+            }
+            else
+            {
+                result=mysql_store_result(&mysql);
+                int row_num = mysql_num_rows(result);//返回结果集中的行的数目
+                cout<<"结果集中的记录行数为："<<row_num<<endl;
+                if (row_num==0) //保存查询的结果
+                {
+                    fprintf(stderr, "fail to store result!\n");
+                    cout<<"query error!"<<endl<<"该用户（A）不在线！连接失败。。"<<endl;
+                    return ;
+                }
+                else
+                {
+                    MYSQL_ROW row;//代表的是结果集中的一行
+                
+                    while ((row = mysql_fetch_row(result)) != NULL)
+                    //读取结果集中的数据，返回的是下一行。因为保存结果集时，当前的游标在第一行【之前】 
+                    {
+                            cout<<"query succeed!"<<endl<<"服务器端该用户的信息为："<<endl;
+                    
+                        printf("ID： %s\t", row[0]);//打印当前行的第一列的数据        
+                        printf("姓名： %s\t", row[1]);//打印当前行的第二列的数据
+                        printf("密码： %s\t", row[2]);//打印当前行的第三列的数据
+                        printf("用户状态： %s\t", row[3]);//打印当前行的第四列的数据
+                        printf("sock_fd：%s\n",row[4]);//打印当前行的第五列的数据
+						printf("IP： %s\t", row[5]);//打印当前行的第六列的数据
+ 						printf("端口号： %s\t", row[6]);//打印当前行的第七列的数据
+ 						fflush(stdout);
+ 
+						cout << endl;
+ 						A_fd=atoi(row[4]);
+ 						A_IP=row[5];
+ 						A_port=atoi(row[6]);
+						fflush(stdout);
+					}
+ 					printf("A的fd为：%d\n",B_fd);
+ 					cout<<"A的IP为："<<A_IP<<endl;
+ 					cout<<"A的port为："<<A_port<<endl;
+                }
+            }
+
+            //制作反馈客户端请求“视频聊天”的Json包
+            //1.对客户端请求的“一对一聊天”B用户身份和在线状态进行核对
+            //2.查询出A用户的fd，和B用户的fd
+            //3.对客户端的“一对一聊天”请求进行确认
+          
+			TYPE=TYPE_VIDEO;
+            Json::Value val_OK;
+			val_OK["type"]=TYPE;
+            val_OK["OK"]="OK";
+            val_OK["A_name"]=val["A_name"];//Ay 用户的名字
+            val_OK["A_fd"]=A_fd;//A用户的fd
+			val_OK["A_IP"]=A_IP;//A用户的IP
+			val_OK["A_port"]=A_port;//A用户的port
+            
+			val_OK["B_name"]=val["B_name"];//B用户的名字
+            val_OK["B_fd"]=B_fd;//B用户的fd
+			val_OK["B_IP"]=B_IP;//B用户的IP
+			val_OK["B_port"]=B_port;//B用户的port
+            
+			if(-1==send(B_fd,val_OK.toStyledString().c_str(),strlen(val_OK.toStyledString().c_str()),0))
+			{
+		     	cout<<"服务器向B发送“视频聊天”请求的JSON包失败！"<<endl;
+				return ;
+			}
+			else
+			{
+				cout<<"服务器向B发送“视频聊天”请求的JSON包成功！"<<endl;
+			}
+			sleep(1);
+
+            if(-1==send(fd,val_OK.toStyledString().c_str(),strlen(val_OK.toStyledString().c_str()),0))
+            {
+                cout<<"服务器端发送“视频聊天”请求的确认JSON包失败！"<<endl;
+                return ;
+            }
+            else
+            {
+                cout<<"服务器端发送“视频聊天”请求的确认JSON包成功！"<<endl;
+            }
+		}
+	}
+}
+
 void function0(MYSQL mysql)//查询数据库的全部信息
 {
 	MYSQL_RES * result;//保存结果集的
@@ -862,7 +1150,10 @@ void function0(MYSQL mysql)//查询数据库的全部信息
                 printf("ID： %s\t", row[0]);//打印当前行的第一列的数据        
                 printf("姓名： %s\t", row[1]);//打印当前行的第二列的数据
                 printf("密码： %s\t", row[2]);//打印当前行的第三列的数据
-                printf("用户状态： %s\t", row[3]);//打印当前行的第一列的数据
+                printf("用户状态： %s\t", row[3]);//打印当前行的第四列的数据
+				printf("sock_fd： %s\t", row[4]);//打印当前行的第四列的数据
+				printf("IP： %s\t", row[5]);//打印当前行的第五列的数据
+				printf("端口号： %s\t", row[6]);//打印当前行的第六列的数据
                 fflush(stdout);
 
                 cout << endl;

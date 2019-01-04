@@ -8,7 +8,7 @@
 #include<netinet/in.h>
 #include<pthread.h>
 #include<fcntl.h>
-#define SER_PORT 6000
+#define SER_PORT 8000
 #define SER_IP "127.0.0.1"
 
 void recv_file(int sockfd,char *name)
